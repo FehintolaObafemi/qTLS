@@ -1,4 +1,4 @@
-# Project Title: Quantum TLS
+# Quantum TLS
 
 # Objective:
 The objective of this project is to develop a quantum version of TLS that provides stronger security against attacks from quantum computers.
@@ -28,9 +28,9 @@ The objective of this project is to develop a quantum version of TLS that provid
 
 # Timeline:
 
-. Week 1-2: Research and Analysis
-. Week 3-4: QKD Protocol Implementation
-. Week 5-6: Quantum Cryptographic Algorithm Development
-. Week 7-8: Quantum-Safe TLS Protocol Implementation
-. Week 9-10: Documentation and Examples
-. Week 11-12: Results and Finalizing the Project
+    - Week 1-2: Research and Analysis
+    - Week 3-4: QKD Protocol Implementation
+    - Week 5-6: Quantum Cryptographic Algorithm Development
+    - Week 7-8: Quantum-Safe TLS Protocol Implementation
+    - Week 9-10: Documentation and Examples
+    - Week 11-12: Results and Finalizing the Project
