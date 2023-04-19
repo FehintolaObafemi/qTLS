@@ -16,9 +16,9 @@ The objective of this project is to develop a quantum version of TLS that provid
 # Deliverables:
 
 1. Source code: The source code for the project will be hosted on GitHub and will include the following components:
-    - Python code for QKD protocol implementation
-    - Python code for the quantum cryptographic algorithm
-    - Python code for implementing the quantum-safe TLS protocol
+    - Python or C# code for QKD protocol implementation
+    - Python or C# code for the quantum cryptographic algorithm
+    - Python or C# code for implementing the quantum-safe TLS protocol
 
 2. Documentation: The project will include documentation that explains the code and provides examples of how to use it.
 

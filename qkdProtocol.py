@@ -1,91 +1,67 @@
+from qiskit import QuantumCircuit, execute, Aer
+from qiskit.quantum_info import random_statevector
 import numpy as np
-from random import randint
 
-# Define the basis for Alice and Bob
-alice_basis = []
-bob_basis = []
+# Number of qubits to use
+num_qubits = 100
 
-# Define the bits to be sent by Alice
-alice_bits = []
+# Generate random bit and basis strings for Alice and Bob
+alice_bits = np.random.randint(2, size=num_qubits)
+alice_bases = np.random.randint(2, size=num_qubits)
+bob_bases = np.random.randint(2, size=num_qubits)
 
-# Define the photon states to be sent by Alice
-alice_states = []
+# Generate random state vector to use as the qubit state
+qubit_state = random_statevector(2**num_qubits)
 
-# Generate random bits to be sent by Alice
-for i in range(100):
-    alice_bits.append(randint(0, 1))
+# Initialize quantum circuit
+qc = QuantumCircuit(num_qubits, num_qubits)
 
-# Generate random basis for Alice and Bob
-for i in range(100):
-    alice_basis.append(randint(0, 1))
-    bob_basis.append(randint(0, 1))
+# Encode Alice's bits onto the qubits
+for i in range(num_qubits):
+    if alice_bits[i] == 1:
+        qc.x(i)
+    if alice_bases[i] == 1:
+        qc.h(i)
 
-# Generate the photon states to be sent by Alice
-for i in range(100):
-    if alice_bits[i] == 0:
-        if alice_basis[i] == 0:
-            alice_states.append(np.array([1, 0]))
-        else:
-            alice_states.append(np.array([0, 1]))
-    else:
-        if alice_basis[i] == 0:
-            alice_states.append(np.array([1/np.sqrt(2), 1/np.sqrt(2)]))
-        else:
-            alice_states.append(np.array([1/np.sqrt(2), -1/np.sqrt(2)]))
+# Send qubits through quantum channel
+qc.initialize(qubit_state.data, range(num_qubits))
+qubits = qc.qubits
 
-# Define the detection basis for Alice's decoy states
-decoy_basis = []
-for i in range(20):
-    decoy_basis.append(randint(0, 1))
+# Measure qubits in Bob's bases and reveal the bases
+for i in range(num_qubits):
+    if bob_bases[i] == 1:
+        qc.h(i)
+    qc.measure(qubits[i], i)
 
-# Generate the decoy states to be sent by Alice
-decoy_states = []
-for i in range(20):
-    if decoy_basis[i] == 0:
-        decoy_states.append(np.array([1, 0]))
-    else:
-        decoy_states.append(np.array([0, 1]))
+# Simulate the circuit and get measurement results
+simulator = Aer.get_backend('qasm_simulator')
+job = execute(qc, simulator, shots=1)
+result = job.result()
+bob_bits = np.array(list(result.get_counts().keys())[0])[::-1].astype(int)
 
-# Define the detection basis for Bob's measurement
-bob_detection_basis = []
-for i in range(120):
-    bob_detection_basis.append(randint(0, 1))
+# Perform error correction using classical codes such as the repetition code or the CSS code
+# (code not shown here for brevity)
 
-# Define the error rate threshold
-error_threshold = 0.05
+# Discard qubits that were measured in the wrong basis or were used for error correction
+alice_discard = []
+bob_discard = []
+for i in range(num_qubits):
+    if alice_bases[i] != bob_bases[i]:
+        alice_discard.append(i)
+        bob_discard.append(i)
+    # Discard the qubits that were used for error correction
+    # (code not shown here for brevity)
 
-# Define the privacy amplification hash function
-hash_function = lambda x: x % 2
+# Generate shared key from the remaining qubits
+alice_shared = []
+bob_shared = []
+for i in range(num_qubits):
+    if i not in alice_discard and i not in bob_discard:
+        alice_shared.append(alice_bits[i])
+        bob_shared.append(bob_bits[i])
 
-# Define the error correction parity matrix
-parity_matrix = np.array([[1, 1, 0, 1], [1, 0, 1, 1]])
-
-# Define the key size
-key_size = 80
-
-# Define the number of iterations for privacy amplification
-iterations = 5
-
-# Define the qubits received by Bob
-bob_qubits = []
-
-# Bob measures the qubits sent by Alice using his basis
-for i in range(100):
-    if bob_basis[i] == 0:
-        bob_qubits.append(alice_states[i])
-    else:
-        measurement = np.random.choice([0, 1], p=[np.abs(alice_states[i][0])**2, np.abs(alice_states[i][1])**2])
-        if measurement == 0:
-            bob_qubits.append(np.array([1, 0]))
-        else:
-            bob_qubits.append(np.array([0, 1]))
-
-# Bob measures the decoy states sent by Alice
-decoy_results = []
-for i in range(20):
-    if decoy_basis[i] == 0:
-        measurement = np.random.choice([0, 1], p=[1-np.exp(-0.1), np.exp(-0.1)])
-    else:
-        measurement = np.random.choice([0, 1], p=[np.exp(-0.1), 1-np.exp(-0.1)])
-    if measurement == 0:
-        decoy_results
+# Check if Alice and Bob agree on the shared key
+if np.array_equal(alice_shared, bob_shared):
+    print("Alice and Bob agreed on the shared key:", alice_shared)
+else:
+    print("Alice and Bob did not agree on the shared key.")

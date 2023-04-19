@@ -1,0 +1,39 @@
+Quantum Key Distribution (QKD) is a cryptographic protocol that uses the principles of quantum mechanics to establish a secure key between two parties. Here is a complex
+QKD protocol using C# that incorporates several security measures:
+
+1. Initialization phase:
+a. Alice and Bob agree on the quantum channel and the classical channel to be used for communication.
+b. Alice randomly generates a string of bits and encodes them onto a stream of photons using a quantum key generator.
+c. Alice sends the stream of photons to Bob through the quantum channel.
+
+2. Measurement phase:
+a. Bob receives the stream of photons and measures them using a detector.
+b. Bob randomly selects a subset of the measured photons and publicly announces their positions to Alice over the classical channel.
+c. Alice and Bob compare the positions of the selected photons to check for any errors. If there are errors, they abort the protocol and start again. Otherwise, they proceed 
+to the next step.
+
+3. Error correction phase:
+a. Alice sends Bob a list of basis choices used to encode the photons.
+b. Bob compares the basis choices with his own measurement basis and determines which photons were measured in the wrong basis. He keeps these photons and discards the rest.
+c. Alice and Bob exchange information about the wrong basis measurements over the classical channel to correct the errors.
+
+4. Privacy amplification phase:
+a. Alice and Bob use a hash function to extract a shared secret key from the corrected bit values.
+b. Alice and Bob perform a protocol to generate a shared random seed to be used as an input to the hash function.
+c. Alice and Bob use the shared secret key to encrypt and decrypt their messages.
+
+Here are some security measures incorporated in the protocol:
+
+1. Authentication: The protocol ensures that only Alice and Bob can communicate with each other by authenticating each other's identities.
+
+2. Secrecy: The protocol ensures that the key used for encryption and decryption is kept secret from any eavesdroppers. The use of the quantum channel ensures that any attempt 
+to intercept or measure the photons will disturb their state, making it impossible for an eavesdropper to obtain the key without being detected.
+
+3. Error detection and correction: The protocol includes an error detection and correction mechanism to detect and correct any errors that may occur during transmission. This 
+mechanism ensures that the final key obtained by Alice and Bob is error-free and secure.
+
+4. Privacy amplification: The protocol includes a privacy amplification phase to extract a shorter, but secure, shared key from the raw key generated during the protocol. This 
+ensures that even if an eavesdropper has obtained some information about the raw key, they cannot use it to derive the final shared key used for encryption and decryption.
+
+The above protocol provides a comprehensive set of security measures to ensure the confidentiality and integrity of the shared key used for encryption and decryption. However, 
+it is important to note that no protocol can provide perfect security, and the security of the protocol depends on the implementation and the underlying assumptions.
