@@ -1,5 +1,6 @@
 from qiskit import QuantumCircuit, Aer, execute
 from qiskit.quantum_info import random_statevector
+import numpy as np
 
 # Generate random bit string to be encrypted
 plaintext = '11001100'
