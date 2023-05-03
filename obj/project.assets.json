@@ -8,25 +8,34 @@
     "net7.0": []
   },
   "packageFolders": {
-    "/Users/fehintola/.nuget/packages/": {}
+    "C:\\Users\\taofeeko\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/fehintola/Documents/GitHub/qTLS/qTLS.csproj",
+      "projectUniqueName": "C:\\src\\qTLS\\qTLS.csproj",
       "projectName": "qTLS",
-      "projectPath": "/Users/fehintola/Documents/GitHub/qTLS/qTLS.csproj",
-      "packagesPath": "/Users/fehintola/.nuget/packages/",
-      "outputPath": "/Users/fehintola/Documents/GitHub/qTLS/obj/",
+      "projectPath": "C:\\src\\qTLS\\qTLS.csproj",
+      "packagesPath": "C:\\Users\\taofeeko\\.nuget\\packages\\",
+      "outputPath": "C:\\src\\qTLS\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "/Users/fehintola/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\taofeeko\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net7.0"
       ],
       "sources": {
-        "https://api.nuget.org/v3/index.json": {}
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
+        "https://api.nuget.org/v3/index.json": {},
+        "https://pkgs.dev.azure.com/msazure/One/_packaging/Microsoft.Graph.AGS/nuget/v3/index.json": {}
       },
       "frameworks": {
         "net7.0": {
@@ -59,7 +68,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/7.0.203/RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.203\\RuntimeIdentifierGraph.json"
       }
     }
   }

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "mxL1Rp/RPdfYbm4Wtgs0CiLyo6k0AXCEKj5eL+egrlP3E9z5WJ1rD52fIGrKjdiOsrAJOt8pwx099gzauJMfqQ==",
+  "dgSpecHash": "i4sxtj3JBhqywCrwUgNsuhcAlTsELEKJrRC1xWMKvbS44GeuoHdGWZCeLbcHGa8W0pwRa0yOLdOfSbcwsRX23Q==",
   "success": true,
-  "projectFilePath": "/Users/fehintola/Documents/GitHub/qTLS/qTLS.csproj",
+  "projectFilePath": "C:\\src\\qTLS\\qTLS.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

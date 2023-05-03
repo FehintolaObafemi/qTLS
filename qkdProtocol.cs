@@ -1,123 +1,168 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Collections;
+using System.Security.Cryptography;
 
-namespace QKDProtocol
+namespace qTLS
 {
-    class QKDProtocol
-    {
-        static void Main(string[] args)
+    /* This implementation generates random bits and qubits for Alice, transmits the qubits to Bob, measures the qubits, performs error correction 
+    to obtain the sifted bits, and performs privacy amplification to generate a shared key. The implementation uses SHA256 for privacy amplification 
+    and supports variable block sizes for error correction.
+    */
+    class QKDProtocol {
+
+        public static Random rand = new Random();
+
+        public static int[] GenerateBases(int numBits)
         {
-            // Generate random bits for Alice and Bob
-            Random rand = new Random();
-            int[] alice_bits = Enumerable.Repeat(0, 10).Select(i => rand.Next(2)).ToArray();
-            int[] bob_bits = Enumerable.Repeat(0, 10).Select(i => rand.Next(2)).ToArray();
-
-            // Generate random basis for Alice and Bob
-            int[] alice_basis = Enumerable.Repeat(0, 10).Select(i => rand.Next(2)).ToArray();
-            int[] bob_basis = Enumerable.Repeat(0, 10).Select(i => rand.Next(2)).ToArray();
-
-            // Alice encodes her bits using her basis
-            int[] alice_encoded = Enumerable.Repeat(-1, 10).ToArray();
-            for (int i = 0; i < 10; i++)
+            int[] bases = new int[numBits];
+            for (int i = 0; i < numBits; i++)
             {
-                if (alice_basis[i] == 0)
-                {
-                    alice_encoded[i] = alice_bits[i];
-                }
-                else
-                {
-                    alice_encoded[i] = (alice_bits[i] + 1) % 2;
-                }
+                bases[i] = rand.Next(2);
             }
+            return bases;
+        }
 
-            // Bob measures the qubits using his basis
-            int[] bob_measured = Enumerable.Repeat(-1, 10).ToArray();
-            for (int i = 0; i < 10; i++)
+        public static Complex[] GenerateQubits(int numBits) 
+        {
+            Complex[] qubits = new Complex[numBits];
+            for (int i = 0; i < numBits; i++) 
             {
-                if (bob_basis[i] == 0)
-                {
-                    bob_measured[i] = alice_encoded[i];
-                }
-                else
-                {
-                    bob_measured[i] = (alice_encoded[i] + 1) % 2;
-                }
+                double theta = rand.NextDouble() * 2 * Math.PI;
+                qubits[i] = new Complex(Math.Cos(theta), Math.Sin(theta));
             }
+            return qubits;
+        }
 
-            // Alice and Bob reveal their bases
-            string alice_basis_string = string.Join("", alice_basis.Select(i => i.ToString()).ToArray());
-            string bob_basis_string = string.Join("", bob_basis.Select(i => i.ToString()).ToArray());
-            Console.WriteLine("Alice's basis: " + alice_basis_string);
-            Console.WriteLine("Bob's basis: " + bob_basis_string);
-
-            // Alice and Bob discard the qubits measured in the wrong basis
-            List<int> alice_discard = new List<int>();
-            List<int> bob_discard = new List<int>();
-            for (int i = 0; i < 10; i++)
+        public static Complex[] TransmitQubits(Complex[] qubits) 
+        {
+            Complex[] transmitted = new Complex[qubits.Length];
+            for (int i = 0; i < qubits.Length; i++) 
             {
-                if (alice_basis[i] != bob_basis[i])
+                transmitted[i] = qubits[i] * new Complex(rand.NextDouble() > 0.5 ? 1 : -1, 0);
+            }
+            return transmitted;
+        }
+
+        public static int[] MeasureBases(Complex[] qubits, int[] bases) 
+        {
+            int[] results = new int[qubits.Length];
+            for (int i = 0; i < qubits.Length; i++) 
+            {
+                results[i] = bases[i] == 0 ? (qubits[i].Real > 0 ? 0 : 1) : (qubits[i].Imaginary > 0 ? 1 : 0);
+            }
+            return results;
+        }
+
+        public static int[] ErrorCorrection(int[] aliceBlock, int[] aliceBases, int[] bobBlock, int numBitsPerBlock) 
+        {
+            int[] siftedBits = new int[numBitsPerBlock];
+            int numSiftedBits = 0;
+            for (int i = 0; i < aliceBlock.Length; i += numBitsPerBlock) 
+            {
+                Dictionary<string, int> counts = new Dictionary<string, int>();
+                for (int j = i; j < i + numBitsPerBlock; j++) 
                 {
-                    alice_discard.Add(i);
-                    bob_discard.Add(i);
-                }
-            }
-
-            // Alice and Bob compare a subset of their remaining bits to detect eavesdropping
-            List<int> compare_indices = new List<int>() { 0, 3, 6, 9 };
-            List<int> alice_compare = new List<int>();
-            List<int> bob_compare = new List<int>();
-            for (int i = 0; i < compare_indices.Count; i++)
-            {
-                int idx = compare_indices[i];
-                alice_compare.Add(alice_encoded[idx]);
-                bob_compare.Add(bob_measured[idx]);
-            }
-
-            bool eavesdropping_detected = false;
-            for (int i = 0; i < compare_indices.Count; i++)
-            {
-                if (alice_compare[i] != bob_compare[i])
-                {
-                    eavesdropping_detected = true;
-                    break;
-                }
-            }
-
-            if (eavesdropping_detected)
-            {
-                Console.WriteLine("Eavesdropping detected!");
-            }
-            else
-            {
-                Console.WriteLine("No eavesdropping detected.");
-
-                // Alice and Bob share the remaining qubits to generate the shared key
-                List<int> alice_shared = new List<int>();
-                List<int> bob_shared = new List<int>();
-                for (int i = 0; i < 10; i++)
-                {
-                    if (!alice_discard.Contains(i) && !bob_discard.Contains(i))
+                    string key = aliceBases[j] + "," + bobBlock[j];
+                    if (!counts.ContainsKey(key)) 
                     {
-                        alice_shared.Add(alice_encoded[i]);
-                        bob_shared.Add(bob_measured[i]);
+                        counts[key] = 0;
+                    }
+                    counts[key]++;
+                }
+                var maxCount = counts.Values.Max();
+                var aliceBasis = -1;
+                var bobBasis = -1;
+                foreach (var entry in counts) 
+                {
+                    if (entry.Value == maxCount) 
+                    {
+                        string[] parts = entry.Key.Split(',');
+                        aliceBasis = int.Parse(parts[0]);
+                        bobBasis = int.Parse(parts[1]);
+                        break;
                     }
                 }
+                if (aliceBasis != -1 && bobBasis != -1 && aliceBasis == bobBasis) 
+                {
+                    for (int j = i; j < i + numBitsPerBlock; j++) 
+                    {
+                        siftedBits[numSiftedBits++] = aliceBlock[j];
+                    }
+                }
+            }
+            return siftedBits.Take(numSiftedBits).ToArray();
+        }
 
-                // Alice and Bob compare their shared bits to confirm agreement
-                bool agreement = alice_shared.SequenceEqual(bob_shared);
-                if (agreement)
+        public static byte[] PrivacyAmplification(int[] siftedBits, byte[] sharedSecret, int numBits)
+        {
+            byte[] hash = new byte[numBits / 8];
+            using (var sha256 = SHA256.Create()) 
+            {
+                byte[] buffer = new byte[sharedSecret.Length + 4];
+                for (int i = 0; i < numBits / 32; i++) 
                 {
-                    Console.WriteLine("Alice and Bob agreed on the shared key: " + string.Join("", alice_shared.Select(i => i.ToString()).ToArray()));
+                    BitConverter.GetBytes(i).CopyTo(buffer, 0);
+                    Array.Copy(sharedSecret, i * 4, buffer, 4, 4);
+                    byte[] digest = sha256.ComputeHash(buffer);
+                    Array.Copy(digest, 0, hash, i * 32 / 8, 32 / 8);
                 }
-                else
-                {
-                    Console.WriteLine("Alice and Bob did not agree on the shared key.");
-                }
+            }
+            BitArray bits = new BitArray(siftedBits);
+            BitArray result = new BitArray(numBits);
+            for (int i = 0; i < numBits; i++) 
+            {
+                result[i] = hash[i / 8] >> (7 - (i % 8)) & 1;
+            }
+            result.Xor(bits);
+            byte[] output = new byte[numBits / 8];
+            result.CopyTo(output, 0);
+            return output;
+        }
+        /*static void Main(string[] args) 
+        {
+            int numBits = 1024;
+            int numBitsPerBlock = 16;
+
+            Console.WriteLine("QKD protocol with error correction and privacy amplification");
+            Console.WriteLine("------------------------------------------------------------");
+            Console.WriteLine("Generating random bits and qubits...");
+            int[] aliceBits = Enumerable.Range(0, numBits).Select(i => rand.Next(2)).ToArray();
+            int[] aliceBases = GenerateBases(numBits);
+            Complex[] aliceQubits = GenerateQubits(numBits);
+
+            Console.WriteLine("Transmitting qubits...");
+            Complex[] bobQubits = TransmitQubits(aliceQubits);
+
+            Console.WriteLine("Measuring qubits...");
+            int[] bobBases = GenerateBases(numBits);
+            int[] bobBits = MeasureBases(bobQubits, bobBases);
+
+            Console.WriteLine("Performing error correction...");
+            int[] siftedBits = ErrorCorrection(aliceBits, aliceBases, bobBits, numBitsPerBlock);
+
+            Console.WriteLine("Performing privacy amplification...");
+            byte[] sharedSecret = new byte[siftedBits.Length / 8];
+            rand.NextBytes(sharedSecret);
+            byte[] key = PrivacyAmplification(siftedBits, sharedSecret, numBits);
+
+            Console.WriteLine("Key exchange complete. Shared key:");
+            Console.WriteLine(BitConverter.ToString(key).Replace("-", ""));
+        }*/
+
+        public struct Complex 
+        {
+            public double Real { get; set; }
+            public double Imaginary { get; set; }
+
+            public Complex(double real, double imaginary) 
+            {
+                Real = real;
+                Imaginary = imaginary;
+            }
+
+            public static Complex operator *(Complex a, Complex b) 
+            {
+                return new Complex(a.Real * b.Real - a.Imaginary * b.Imaginary, a.Real * b.Imaginary + a.Imaginary * b.Real);
             }
         }
     }
 }
-
-
