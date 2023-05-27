@@ -34,3 +34,8 @@ The objective of this project is to develop a quantum version of TLS that provid
     - Week 7-8: Quantum-Safe TLS Protocol Implementation
     - Week 9-10: Documentation and Examples
     - Week 11-12: Results and Finalizing the Project
+
+# Deployment/Building:
+
+    - dotnet build
+    - dotnet run

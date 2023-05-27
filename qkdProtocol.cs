@@ -95,10 +95,10 @@ namespace qTLS
         public static byte[] PrivacyAmplification(int[] siftedBits, byte[] sharedSecret, int numBits)
         {
             byte[] hash = new byte[numBits / 8];
-            using (var sha256 = SHA256.Create()) 
+            using (var sha256 = SHA256.Create())
             {
                 byte[] buffer = new byte[sharedSecret.Length + 4];
-                for (int i = 0; i < numBits / 32; i++) 
+                for (int i = 0; i < numBits / 32; i++)
                 {
                     BitConverter.GetBytes(i).CopyTo(buffer, 0);
                     Array.Copy(sharedSecret, i * 4, buffer, 4, 4);
@@ -108,45 +108,16 @@ namespace qTLS
             }
             BitArray bits = new BitArray(siftedBits);
             BitArray result = new BitArray(numBits);
-            for (int i = 0; i < numBits; i++) 
+            for (int i = 0; i < numBits; i++)
             {
-                result[i] = hash[i / 8] >> (7 - (i % 8)) & 1;
+                result[i] = (hash[i / 8] >> (7 - (i % 8)) & 1) == 1;
             }
             result.Xor(bits);
             byte[] output = new byte[numBits / 8];
             result.CopyTo(output, 0);
             return output;
         }
-        /*static void Main(string[] args) 
-        {
-            int numBits = 1024;
-            int numBitsPerBlock = 16;
 
-            Console.WriteLine("QKD protocol with error correction and privacy amplification");
-            Console.WriteLine("------------------------------------------------------------");
-            Console.WriteLine("Generating random bits and qubits...");
-            int[] aliceBits = Enumerable.Range(0, numBits).Select(i => rand.Next(2)).ToArray();
-            int[] aliceBases = GenerateBases(numBits);
-            Complex[] aliceQubits = GenerateQubits(numBits);
-
-            Console.WriteLine("Transmitting qubits...");
-            Complex[] bobQubits = TransmitQubits(aliceQubits);
-
-            Console.WriteLine("Measuring qubits...");
-            int[] bobBases = GenerateBases(numBits);
-            int[] bobBits = MeasureBases(bobQubits, bobBases);
-
-            Console.WriteLine("Performing error correction...");
-            int[] siftedBits = ErrorCorrection(aliceBits, aliceBases, bobBits, numBitsPerBlock);
-
-            Console.WriteLine("Performing privacy amplification...");
-            byte[] sharedSecret = new byte[siftedBits.Length / 8];
-            rand.NextBytes(sharedSecret);
-            byte[] key = PrivacyAmplification(siftedBits, sharedSecret, numBits);
-
-            Console.WriteLine("Key exchange complete. Shared key:");
-            Console.WriteLine(BitConverter.ToString(key).Replace("-", ""));
-        }*/
 
         public struct Complex 
         {
