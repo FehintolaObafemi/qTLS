@@ -18,8 +18,9 @@ Errors
     A non-``bytes``/``bytearray`` input. A programming error.
 ``ValueError``
     A key, ciphertext or seed of the wrong length, or a bad context string.
-    A programming or framing error: callers must length-check wire data
-    before calling in (TLS: ``decode_error``).
+    A local error: the protocol layer length-checks wire data before calling
+    in and raises the alert specs.md D10 names (``illegal_parameter`` for key
+    shares and KEM ciphertexts, ``decode_error`` for structural lengths).
 :class:`InvalidPublicKey` (a ``ValueError``)
     A correctly sized KEM encapsulation key that fails validation, such as
     ML-KEM coefficients that aren't reduced mod q (FIPS 203 §7.2). Raised the

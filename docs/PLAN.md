@@ -149,6 +149,13 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
 - **`qtls/messages.py`:** encoders and decoders that reject truncated input, trailing bytes and oversized lengths.
 - **One exception → alert table** (specs.md D10), defined once in the protocol layer and tested.
 - **Strict DER codec** `qtls/der.py` and hand-built certificates (specs.md D20).
+- **Handshake-level checks the codec leaves to the state machine** (from the 2b review):
+  - which extensions are allowed in which message (RFC 8446 §4.2 → `illegal_parameter`);
+  - no handshake fragments interleaved with other record types (RFC 9846 §5.1), using `HandshakeReader.pending()`;
+  - the ChangeCipherSpec window passed to `record.receive`;
+  - the server's policy on duplicate or out-of-list `client_shares`;
+  - an empty server Certificate → `decode_error` (RFC 8446 §4.4.2.4);
+  - a received alert raises `PeerAlert` and is never answered.
 - **Sans-I/O handshake state machine.** Transports are separate, in `qtls/transport/`:
   - **in-memory**, for tests
   - **TCP**, with `TCP_NODELAY` and one write per flight
@@ -158,7 +165,7 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
 - **Oracles:**
   - RFC 8448 §3, driven by **injected inputs** (keys, randoms, messages) through the codec, key schedule and record layer. The state machine can't negotiate RFC 8448's X25519 and RSA-PSS (D16). The handshake therefore takes an explicit randomness provider rather than calling `os.urandom` itself. It supplies the client random and ephemeral keys, and can also **inject KEM encapsulation results (ct, ss) and signing randomness**. OpenSSL can derandomise neither ML-KEM encapsulation nor ML-DSA signing, so byte-exact fixtures either inject these or use the liboqs backend.
   - An X25519MLKEM768 share-layout test, and a test that swapping the order of the combined secrets changes the result.
-  - A gated OpenSSL ≥ 3.5 interop test for hybrid key exchange.
+  - A gated OpenSSL ≥ 3.5 interop test for hybrid key exchange, plus a vendored OpenSSL 3.6 handshake capture (with keylog) as a second independent oracle for multi-record flights and record protection (moved here from 2b).
   - A size cross-check of config A against an OpenSSL capture.
 - **Negative tests:** tampered certificate or signature, wrong CertificateVerify context, truncated transcript, an algorithm the client didn't offer, an untrusted root, an expired leaf, messages out of order or missing, and record tampering or replay.
 
