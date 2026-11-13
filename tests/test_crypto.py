@@ -461,3 +461,16 @@ def test_backend_info_records_versions(backend: str) -> None:
         assert info["liboqs"] == crypto.LIBOQS_VERSION
         assert info["liboqs_sha"] == crypto.LIBOQS_SHA
         assert info["liboqs_cmake_flags"] == crypto.LIBOQS_CMAKE_FLAGS
+
+
+def test_malformed_pq_signer_public_keys_are_invalid_signatures(backend: str) -> None:
+    """A correctly sized but garbage ML-DSA or Falcon key from the wire can't verify anything."""
+    for alg in sig_algs(backend):
+        if alg == "ECDSA-P256-SHA256":
+            continue  # covered by test_malformed_signer_public_key_is_an_invalid_signature
+        sk = crypto.sig_generate(alg, backend)  # type: ignore[arg-type]
+        sig = sk.sign(MESSAGE)
+        pk_len = EXPECTED_SIG_SIZES[alg][0]
+        for garbage in (bytes(pk_len), b"\xff" * pk_len):
+            with pytest.raises(InvalidSignature):
+                crypto.sig_verify(alg, garbage, MESSAGE, sig, backend)  # type: ignore[arg-type]
