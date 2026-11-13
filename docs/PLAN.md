@@ -27,9 +27,9 @@ And what does it cost in latency to explicit authentication, server-first data, 
 
 **Pinned specs.** `docs/specs.md` records the exact revisions and private-use codepoints in force, and all tests cite them:
 - `draft-celi-wiggers-tls-authkem-08`
-- `draft-wiggers-tls-authkem-psk-05`
+- `draft-wiggers-tls-authkem-psk-06`
 - `draft-ietf-plants-merkle-tree-certs-08`
-- `draft-ietf-tls-ecdhe-mlkem` (current revision)
+- RFC 10024 (formerly `draft-ietf-tls-ecdhe-mlkem`)
 - RFC 8446
 - RFC 8448
 - FIPS 203 and FIPS 204
@@ -43,7 +43,7 @@ Configs are points in a matrix of independent axes, not five hard-coded letters.
 | Server auth mechanism | `sig`, `kem` |
 | Certificate format | `x509`, `mtc-standalone`, `mtc-landmark` (falls back to standalone) |
 | Auth algorithm | ML-DSA-44, ML-DSA-65, FN-DSA-512, ECDSA-P256 (A only), ML-KEM-512, ML-KEM-768 |
-| KEM key delivery (kem only) | `in-cert`, `pre-distributed` (authkem-psk-05) |
+| KEM key delivery (kem only) | `in-cert`, `pre-distributed` (authkem-psk-06) |
 | SCTs in x509 chains | 0, 2 |
 
 The README's A–E are named points in this matrix.
@@ -107,6 +107,8 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
 
 **Exit:** `specs.md` and `threat-model.md` are committed and reviewed, and the novelty statement is written.
 
+**Met on 2026-11-13.** `docs/specs.md` (D1–D19), `docs/threat-model.md` (A1–A5, P1–P15), `docs/novelty.md`. Reviewed by architect, engineer and tester; their blocking findings were fixed before merge. Entry criteria carried forward: read RFC 9846 before Phase 2, and `draft-ietf-tls-trust-anchor-ids` before Phase 3.
+
 ### Phase 1: Repository reset and crypto foundation (week 2)
 - **Repository clean-up:**
   - Move all 2023 files into `legacy/`: sources, `.txt` notes, `qTLS.csproj`, `qTLS.docx` and `.vscode/`.
@@ -129,10 +131,16 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
 
 **Exit:** CI is green on a fresh clone with no skips. A deliberately broken known-answer test is shown to turn CI red.
 
+**Met on 2026-11-13.**
+- **Green:** [run 43453757836](https://github.com/FehintolaObafemi/qTLS/actions/runs/43453757836). 173 passed, 0 skipped, on Python 3.11 and 3.13.
+- **Red:** [run 43457010922](https://github.com/FehintolaObafemi/qTLS/actions/runs/43457010922). One ML-KEM-512 KAT value was corrupted, with its SHA-256 updated so only the KAT itself could catch it. 1 failed (`test_mlkem_decapsulation[ML-KEM-512-tc1]`) and 172 passed.
+
 **Deferred from the Phase 1 review** (each must be done before the phase named):
 - **Falcon-512 known-answer test** (before Phase 2 baselines). Falcon is liboqs-only, so it has no differential oracle. Today only a variable-length check rules out the padded variant. A verify KAT from the round-3 Falcon vectors needs a vendored download.
 - **ML-DSA key generation KAT on OpenSSL** (before Phase 2): seeded `sig_generate`, plus ACVP ML-DSA-keyGen vectors.
 - **Deterministic fixtures** (Phase 2): seeded signature keys, key import and export, and a derandomised signing hook. Phase 5's byte-for-byte reproducibility needs these, because Falcon and ECDSA signature lengths vary.
+- **X25519 private-key import** (Phase 2), so RFC 7748 and RFC 8448 vectors can run (threat model P4).
+- **AuthKEM golden vectors take SSs and the ciphertext as inputs** (Phase 4), because ML-KEM encapsulation can't be derandomised through either backend.
 - **Where X.509 is built** (decide at the start of Phase 2). `cryptography`'s builder can't sign with liboqs keys. Either `crypto.py` builds certificates, or certificates are hand-written DER signed through the wrapper.
 - **Hashing, HKDF and AEAD go through the wrapper and are counted** (Phase 2). Config C's verification cost is mostly Merkle hashing.
 - **An explicit security-level pairing key** (Phase 2) rather than comparing `nist_category` values (ML-DSA-44 is category 2, its ML-KEM-512 partner is category 1).
@@ -182,7 +190,7 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
   - Main Secret = Extract(dAHS, 0)
   - Finished keys derived from the Main Secret
   - the **client's Finished first**
-- **Pre-distributed key variant,** following `draft-wiggers-tls-authkem-psk-05` (not "KEMTLS-PDK").
+- **Pre-distributed key variant,** following `draft-wiggers-tls-authkem-psk-06` (not "KEMTLS-PDK"; see specs.md D12).
 - **Independent oracle:**
   - a straight-line reference derivation kept *outside* `qtls/`, written from the draft text
   - frozen golden vectors, signed off by a reviewer
