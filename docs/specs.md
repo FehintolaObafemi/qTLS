@@ -12,7 +12,7 @@
 | Hybrid ML-KEM key agreement for TLS 1.3 | **RFC 10024** (Aug 2026), formerly `draft-ietf-tls-ecdhe-mlkem` | Proposed Standard. No test vectors. | `X25519MLKEM768` in every config |
 | ML-DSA in TLS 1.3 | `draft-ietf-tls-mldsa-06` | IANA has registered its codepoints | Configs B and C |
 | HPKE with post-quantum KEMs | `draft-ietf-hpke-pq-05` | CFRG draft. Appendix A has vectors. | D1 (HPKE derivation of SSs) |
-| TLS 1.3 | RFC 8446, as revised by **RFC 9846** (July 2026) | Read 2026-11-13: no change to the key schedule labels, HKDF-Expand-Label, record or message formats, or alerts that qTLS uses. New rules qTLS follows: never reuse a key share; handshake messages never span a key change. RFC 8448 remains the reference trace. | Everything |
+| TLS 1.3 | RFC 8446, as revised by **RFC 9846** (July 2026) | Read 2026-11-13: no change to the key schedule labels, HKDF-Expand-Label, record format, or alerts that qTLS uses. One message-format change matters: `ClientHello.extensions` is now `<7..2^16-1>` (was 8); qTLS follows RFC 9846. New rules qTLS follows: never reuse a key share; handshake messages never span a key change. RFC 8448 remains the reference trace. | Everything |
 | TLS 1.3 example handshakes | RFC 8448 | | Phase 2 key schedule oracle |
 | HPKE | RFC 9180 | | D1 |
 | ML-KEM / ML-DSA | FIPS 203 / FIPS 204 | | Primitives |
@@ -155,6 +155,7 @@ Each decision states the reading chosen, the reading rejected, and the test that
   - **Tampered KEMEncapsulation:** ML-KEM decapsulation doesn't fail (implicit rejection), so the server derives a different SSs and **the client Finished record fails decryption** → `bad_record_mac`.
   - **A server without the certificate's secret key:** the client fails to decrypt the server Finished record → `bad_record_mac`.
   - **verify_data mismatch** inside a record that decrypts → `decrypt_error`.
+  - **Where the mapping lives:** `qtls/alerts.py:alert_for` is the single fallback table for exceptions that reach the top of a connection. Context-specific failures don't go through it: certificate-chain verification (Phase 2c) and AuthKEM certificate keys (Phase 4) catch crypto exceptions and raise the right `AlertError` themselves (for example `bad_certificate` for a chain signature, where the table would say `decrypt_error`). A received alert (`PeerAlert`) maps to no alert at all (RFC 8446 §6.2).
 - **Rejected reading:** mapping every length error to `decode_error` (contradicts RFC 10024), or expecting `decrypt_error` when the record itself can't be decrypted.
 - **Tests:** planned: Phase 2 — a 1119- or 1121-byte server share, an unreduced ML-KEM key and an X25519 low-order point each give `illegal_parameter`. Phase 4 — a tampered KEMEncapsulation and an attacker server each give `bad_record_mac`, and a flipped verify_data gives `decrypt_error`.
 
@@ -212,7 +213,7 @@ Each decision states the reading chosen, the reading rejected, and the test that
 - **Decision:**
   - **Suite:** one cipher suite, `0x1301`.
   - **Extensions:** `supported_versions` (TLS 1.3 only), `supported_groups` = [`0x11EC`], one `key_share` (`0x11EC`), `signature_algorithms` for the config, and `server_name` = `qtls.test`.
-  - **Compatibility mode off:** an empty `legacy_session_id` and no ChangeCipherSpec records.
+  - **Compatibility mode off:** an empty `legacy_session_id`, and qTLS never sends ChangeCipherSpec. A peer's valid one is dropped (D22).
   - **No HelloRetryRequest:** receiving one aborts with `unexpected_message`.
   - **Downgrade:** a server choosing any group other than `0x11EC` aborts with `illegal_parameter`.
   - **OpenSSL size check:** the oracle runs OpenSSL with `-groups X25519MLKEM768` and middlebox compatibility off, so it compares like with like.
@@ -253,6 +254,33 @@ Each decision states the reading chosen, the reading rejected, and the test that
   - **Validation time** is an explicit input to path validation, never the wall clock, so expiry tests and benchmarks are reproducible.
 - **Rejected reading:** a lenient (BER-accepting) parser, or a second codec for MTC.
 - **Tests:** planned: Phase 2 — round trips for every certificate the matrix builds. Rejections: indefinite length, non-minimal length, a non-minimal integer, trailing bytes, and a long-form length where short form fits. Expiry against an injected time.
+
+### D21. A repeated extension type
+- **Ambiguity:** RFC 8446 §4.2 says there MUST NOT be more than one extension of the same type in a block, but names no alert.
+- **Decision:** any repeated type in any extension block (ClientHello, ServerHello, EncryptedExtensions, CertificateEntry) aborts with `illegal_parameter`. It's a semantic violation in a well-formed encoding, which RFC 8446 §6 calls `illegal_parameter` rather than `decode_error`.
+- **Rejected reading:** `decode_error`, or keeping the first or last occurrence.
+- **Tests:** implemented — `tests/test_messages.py::test_client_hello_rejections`, `tests/test_messages.py::test_server_hello_rejections`, `tests/test_messages.py::test_duplicate_extension_in_encrypted_extensions`, `tests/test_messages.py::test_duplicate_extension_in_a_certificate_entry`
+
+### D22. Record-layer receive rules
+- **Ambiguity:** RFC 8446 §5 leaves several receive-side choices to the implementation.
+- **Decision:**
+  - **Legacy record version:** ignored on receipt. qTLS sends `0x0301` in the record carrying the first ClientHello (as RFC 8448 and OpenSSL do) and `0x0303` everywhere else.
+  - **Unprotected ChangeCipherSpec:** returned only if its body is exactly `0x01`; anything else is `unexpected_message`. The handshake drops a valid one between the first ClientHello and the peer's Finished (RFC 8446 §5). qTLS never sends one (D16).
+  - **Zero-length handshake or alert content,** protected or not: `unexpected_message`. Zero-length application data is allowed.
+  - **A record that fails AEAD:** `bad_record_mac`, and the sequence number doesn't advance. The connection is torn down anyway.
+  - **Sequence numbers:** 2⁶⁴−1 is the last usable number; using the next one is a local error that requires a new key.
+  - **A handshake message may not span a key change,** and a message that precedes one (ServerHello, Finished) must end its record: `unexpected_message` (RFC 8446 §5.1). `HandshakeReader.require_record_end` enforces both.
+  - **Routing by state:** `record.receive` accepts only plaintext handshake and alert records before receive keys exist, only protected records afterwards, and drops a valid ChangeCipherSpec only while the handshake allows it.
+  - **Plaintext alerts after ServerHello:** a server accepts an unprotected alert from when it sends ServerHello until the client's first protected record. A client that rejects the ServerHello has no keys yet, so its alert arrives in plaintext; it must be seen as the peer's alert (never answered), not as `unexpected_message`. OpenSSL behaves the same way.
+  - **An alert while a handshake message is incomplete:** honoured as the peer's alert (the connection ends), rather than reported as an interleaving violation.
+- **Rejected reading:** checking the legacy version on receipt, or advancing the sequence number after a failure.
+- **Tests:** implemented — `tests/test_record.py::test_plaintext_hello_records`, `tests/test_record.py::test_plaintext_record_rules`, `tests/test_record.py::test_inner_plaintext_rules`, `tests/test_record.py::test_failed_record_leaves_the_sequence_number_alone`, `tests/test_record.py::test_last_sequence_number_is_usable_then_exhausted`, `tests/test_messages.py::test_partial_messages_are_pending_and_may_not_span_a_key_change`, `tests/test_messages.py::test_record_end_is_required_before_a_key_change`, `tests/test_record.py::test_receive_routes_by_state`, `tests/test_record.py::test_plaintext_alert_window_after_server_hello`
+
+### D23. Handshake message size limit
+- **Ambiguity:** a handshake message may announce up to 2²⁴−1 bytes (RFC 8446 §4), and the RFC sets no receive limit, so an unauthenticated peer could make the reader buffer 16 MiB.
+- **Decision:** `HandshakeReader` refuses a message whose header announces more than 128 KiB, as soon as the 4-byte header arrives, with `illegal_parameter` (what OpenSSL sends for an excessive message size). 128 KiB covers every certificate chain in the matrix, including category-3 post-quantum chains with SCTs. The limit is a constructor parameter, so Phase 5 can raise it.
+- **Rejected reading:** no limit, or `decode_error` (the encoding is well formed).
+- **Tests:** implemented — `tests/test_messages.py::test_reader_rejects_oversized_and_unknown_headers_immediately`, `tests/test_messages.py::test_reader_reassembly_is_linear`
 
 ## 5. How to change this file
 
