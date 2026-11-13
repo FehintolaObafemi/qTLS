@@ -4,7 +4,10 @@ files:
   gen-val/json-files/ML-KEM-keyGen-FIPS203/internalProjection.json     -> mlkem_keygen.json
   gen-val/json-files/ML-KEM-encapDecap-FIPS203/internalProjection.json -> mlkem_decap.json
   gen-val/json-files/ML-DSA-sigVer-FIPS204/internalProjection.json     -> mldsa_sigver.json
+  gen-val/json-files/ML-DSA-keyGen-FIPS204/internalProjection.json     -> mldsa_keygen.json
 regenerate: python scripts/trim_acvp.py <download dir> tests/vectors/acvp
-sha256 mlkem_keygen.json: a7df69cff547ff6315ed1cdd3786fc2c3e52fe2e5dde68ce41aad44f242d3708
-sha256 mlkem_decap.json: 05f097c628a153ba8919d08a0869631297952a0c5cd7fa9bd090f03252912b10
+oracle: independent (NIST ACVP)
+sha256 mldsa_keygen.json: 159a40490062b6f23354fa3ece4f4fef02dfe9d6b528e82263ec9bf6ecd03c9d
 sha256 mldsa_sigver.json: 2dab5abea5f6ece95bb3a2b72e839b492cadc541fe962bb2b926591bf3ab796b
+sha256 mlkem_decap.json: 41e66b04659db26dbdfa35a8753fd5ac429105849699dcd4d7c28365409dd5c6
+sha256 mlkem_keygen.json: a7df69cff547ff6315ed1cdd3786fc2c3e52fe2e5dde68ce41aad44f242d3708

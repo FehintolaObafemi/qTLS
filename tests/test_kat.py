@@ -7,6 +7,7 @@ known answers prove the backends run the FIPS 203 / FIPS 204 algorithms.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections import Counter
 from pathlib import Path
@@ -103,3 +104,112 @@ def test_openssl_refuses_expanded_decapsulation_keys() -> None:
 def test_expanded_key_wrong_length_rejected() -> None:
     with pytest.raises(ValueError, match="decapsulation key"):
         crypto.kem_from_decapsulation_key("ML-KEM-768", bytes(2399), "liboqs")
+
+
+# --------------------------------------------------------------------------- #
+# Phase 2a: ML-DSA key generation, ML-KEM encapsulation, liboqs signature KATs
+# --------------------------------------------------------------------------- #
+
+
+MLDSA_KEYGEN = _load("mldsa_keygen.json")
+LIBOQS_KATS = json.loads((VECTORS.parent / "liboqs" / "sig_kats.json").read_text())
+
+
+@pytest.mark.parametrize("vector", MLDSA_KEYGEN["tests"], ids=_ids(MLDSA_KEYGEN["tests"]))
+def test_mldsa_keygen(backend: str, vector: dict) -> None:
+    """FIPS 204 ξ → pk on both backends; liboqs also matches the expanded sk."""
+    key = crypto.sig_generate(vector["parameterSet"], backend, seed=bytes.fromhex(vector["seed"]))  # type: ignore[arg-type]
+    assert key.public_key.hex().upper() == vector["pk"].upper()
+    assert key.seed is not None and key.seed.hex().upper() == vector["seed"].upper()
+    if backend == "liboqs":
+        assert key.expanded_private_key().hex().upper() == vector["sk"].upper()
+    else:
+        with pytest.raises(crypto.BackendUnavailable):
+            key.expanded_private_key()
+
+
+ENCAP_VECTORS = [t for t in DECAP["tests"] if t["function"] == "encapsulation"]
+
+
+@pytest.mark.usefixtures("require_liboqs")
+@pytest.mark.parametrize("vector", ENCAP_VECTORS, ids=_ids(ENCAP_VECTORS))
+def test_mlkem_encapsulation(vector: dict) -> None:
+    """FIPS 203 encapsulation with fixed m: (ek, m) → (c, K)."""
+    ct, ss = crypto.kem_encapsulate(
+        vector["parameterSet"], bytes.fromhex(vector["ek"]), "liboqs", seed=bytes.fromhex(vector["m"])
+    )
+    assert ct.hex().upper() == vector["c"].upper()
+    assert ss.hex().upper() == vector["k"].upper()
+
+
+def test_openssl_refuses_derandomised_encapsulation() -> None:
+    sk = crypto.kem_generate("ML-KEM-768", "openssl")
+    with pytest.raises(crypto.BackendUnavailable):
+        crypto.kem_encapsulate("ML-KEM-768", sk.public_key, "openssl", seed=bytes(32))
+
+
+def _rsp_count(alg: str, count: int, outer: object) -> str:
+    """One entry of liboqs tests/kat_sig.c output, produced through the qtls.crypto API."""
+    seed = outer.random(48)  # type: ignore[attr-defined]
+    msg = outer.random(33 * (count + 1))  # type: ignore[attr-defined]
+    with crypto.deterministic_rng(seed):
+        key = crypto.sig_generate(alg, "liboqs")
+        sig = key.sign(msg)
+    crypto.sig_verify(alg, key.public_key, msg, sig, "liboqs")
+    if alg == "Falcon-512":
+        sm = (len(sig) - 40).to_bytes(2, "big") + sig[1:41] + msg + b"\x29" + sig[41:]
+    else:
+        sm = sig + msg
+
+    def bstr(label: str, b: bytes) -> str:
+        return label + (b.hex().upper() if b else "00") + "\n"
+
+    return (
+        f"count = {count}\n" + bstr("seed = ", seed) + f"mlen = {len(msg)}\n" + bstr("msg = ", msg)
+        + bstr("pk = ", key.public_key) + bstr("sk = ", key.expanded_private_key())
+        + f"smlen = {len(sm)}\n" + bstr("sm = ", sm)
+    )
+
+
+def _liboqs_kat_hash(alg: str, counts: int) -> str:
+    outer = crypto._NistDrbg(bytes(range(48)))
+    entries = [_rsp_count(alg, c, outer) for c in range(counts)]
+    return hashlib.sha256("\n".join(entries).encode()).hexdigest()
+
+
+@pytest.mark.usefixtures("require_liboqs")
+@pytest.mark.parametrize("alg", ["Falcon-512", "ML-DSA-44", "ML-DSA-65"])
+def test_liboqs_signature_kat_single(alg: str) -> None:
+    """Count 0 of liboqs's KAT, reproduced through sig_generate/sign/expanded_private_key."""
+    assert _liboqs_kat_hash(alg, 1) == LIBOQS_KATS[alg]["single"]
+
+
+@pytest.mark.usefixtures("require_liboqs")
+@pytest.mark.parametrize("alg", ["Falcon-512", "ML-DSA-44"])
+def test_liboqs_signature_kat_all(alg: str) -> None:
+    """All 100 counts: message lengths 33..3300 and many Falcon signature lengths."""
+    assert _liboqs_kat_hash(alg, 100) == LIBOQS_KATS[alg]["all"]
+
+
+def test_padded_falcon_has_a_different_kat() -> None:
+    """The vendored hashes really distinguish Falcon-512 from its padded look-alike."""
+    assert LIBOQS_KATS["Falcon-512"]["single"] != LIBOQS_KATS["Falcon-padded-512"]["single"]
+
+
+@pytest.mark.usefixtures("require_liboqs")
+def test_seeded_keygen_matches_the_drbg_kat() -> None:
+    """The seeded entry points derive the same keys as the KAT's DRBG path."""
+    outer = crypto._NistDrbg(bytes(range(48)))
+    seed = outer.random(48)
+    with crypto.deterministic_rng(seed):
+        falcon_kat_pk = crypto.sig_generate("Falcon-512", "liboqs").public_key
+        mldsa_kat_pk = crypto.sig_generate("ML-DSA-44", "liboqs").public_key
+    assert crypto.sig_generate("Falcon-512", "liboqs", seed=seed).public_key == falcon_kat_pk
+    # ML-DSA keygen draws ξ as its first 32 random bytes. (Above, it drew after
+    # Falcon's keygen, so take a fresh stream for the comparison.)
+    xi = crypto._NistDrbg(seed).random(32)
+    with crypto.deterministic_rng(seed):
+        mldsa_first = crypto.sig_generate("ML-DSA-44", "liboqs").public_key
+    assert crypto.sig_generate("ML-DSA-44", "liboqs", seed=xi).public_key == mldsa_first
+    assert crypto.sig_generate("ML-DSA-44", "openssl", seed=xi).public_key == mldsa_first
+    assert mldsa_kat_pk != mldsa_first

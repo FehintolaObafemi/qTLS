@@ -1,0 +1,18 @@
+{
+ "Falcon-512": {
+  "all": "f4f23c1153682007d5dec02c35e47061c17900fcf0adb3fd0437f1988fa13655",
+  "single": "da27fe8a462de7307ddf1f9b00072a457d9c5b14e838c148fbe2662094b9a2ca"
+ },
+ "Falcon-padded-512": {
+  "all": "362ecc0537ca1fe25143fb7ccb04de8ee7703469d13ebcf311ab124a5c374a65",
+  "single": "91842d41138e7cfaf6e2e8f12a03c3b3411302255121e4d07d02f91a003c0395"
+ },
+ "ML-DSA-44": {
+  "all": "54322d25c05b96941aec73eb3ee27a975d38a34bfb53ef4cb9fd4a8e9cab554c",
+  "single": "9a196e7fb32fbc93757dc2d8dc1924460eab66303c0c08aeb8b798fb8d8f8cf3"
+ },
+ "ML-DSA-65": {
+  "all": "47e1ca6d4a45e9853e381954cf97206eca22993deade3cade45bd9d9457c93f9",
+  "single": "7cb96242eac9907a55b5c84c202f0ebd552419c50b2e986dc2e28f07ecebf072"
+ }
+}

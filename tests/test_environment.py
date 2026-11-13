@@ -248,9 +248,15 @@ def test_only_crypto_module_imports_crypto_libraries() -> None:
 
 
 def test_vendored_vectors_match_recorded_hashes() -> None:
-    source = (ROOT / "tests" / "vectors" / "acvp" / "SOURCE").read_text()
-    recorded = dict(re.findall(r"^sha256 (\S+): ([0-9a-f]{64})$", source, re.M))
-    assert set(recorded) == {"mlkem_keygen.json", "mlkem_decap.json", "mldsa_sigver.json"}
-    for name, digest in recorded.items():
-        path = ROOT / "tests" / "vectors" / "acvp" / name
-        assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, name
+    """Every file under tests/vectors is pinned by SHA-256 in its directory's SOURCE."""
+    vectors = ROOT / "tests" / "vectors"
+    dirs = sorted(d for d in vectors.iterdir() if d.is_dir())
+    assert {d.name for d in dirs} >= {"acvp", "liboqs", "rfc7748", "rfc8448"}
+    for d in dirs:
+        source = d / "SOURCE"
+        assert source.is_file(), f"{d.name} has no SOURCE file"
+        recorded = dict(re.findall(r"^sha256 (\S+): ([0-9a-f]{64})$", source.read_text(), re.M))
+        present = {p.name for p in d.iterdir() if p.name != "SOURCE"}
+        assert set(recorded) == present, f"{d.name}: unpinned or missing files"
+        for name, digest in recorded.items():
+            assert hashlib.sha256((d / name).read_bytes()).hexdigest() == digest, f"{d.name}/{name}"

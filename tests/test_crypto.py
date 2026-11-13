@@ -430,7 +430,9 @@ def test_failed_operations_are_not_counted(backend: str) -> None:
             kem.decapsulate(b"short")
         with pytest.raises(UnknownAlgorithm):
             crypto.kem_generate("Kyber768", backend)  # type: ignore[arg-type]
-    assert ops == {}
+    # Usage and framing errors cost nothing; a rejected signature is a real
+    # verification and is counted separately (it costs CPU in attack paths).
+    assert ops == {(backend, "ML-DSA-44", "verify_failed"): 1}
 
 
 def test_count_ops_needs_a_block_inside_each_thread() -> None:

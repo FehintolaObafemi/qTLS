@@ -19,7 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 # Native liboqs is NOT installed by this. Build it with scripts/build_liboqs.sh.
 oqs = ["liboqs-python==0.16.0.2"]
-test = ["pytest==9.2.0"]
+test = ["pytest==9.2.0", "pytest-timeout==2.4.0"]
 notebooks = ["jupyter==1.1.1", "matplotlib==3.11.2"]
 # Pinned in the CI lock so the editable install builds without fetching anything unhashed.
 build = ["setuptools==84.2.1"]
@@ -30,6 +30,8 @@ include = ["qtls*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+# A deadlock (e.g. in the liboqs RNG hook) must fail, not hang CI.
+timeout = 120
 # Turns liboqs-python's version-mismatch warning (and any other) into a failure.
 filterwarnings = ["error"]
 markers = [

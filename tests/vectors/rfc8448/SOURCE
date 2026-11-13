@@ -1,0 +1,5 @@
+document: RFC 8448 §3 (Simple 1-RTT Handshake), https://www.rfc-editor.org/rfc/rfc8448.txt
+source sha256: recorded inside simple_1rtt.json
+regenerate: python scripts/extract_rfc8448.py <rfc8448.txt> tests/vectors/rfc8448/simple_1rtt.json
+oracle: independent (IETF example traces)
+sha256 simple_1rtt.json: 4193232f17b33bd775c124f2e935529a17fbe0dd995063f8c83665c761d1f95f
