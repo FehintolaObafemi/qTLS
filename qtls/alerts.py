@@ -49,11 +49,16 @@ class Alert(IntEnum):
 
 
 class AlertError(Exception):
-    """A protocol failure that must be reported to the peer as ``alert``."""
+    """A protocol failure that must be reported to the peer as ``alert``.
 
-    def __init__(self, alert: Alert, message: str) -> None:
+    ``reason`` is a short machine-checkable tag (e.g. ``"not-a-ca"``) so tests
+    can tell which check failed when several map to the same alert.
+    """
+
+    def __init__(self, alert: Alert, message: str, reason: str | None = None) -> None:
         super().__init__(f"{alert.name}: {message}")
         self.alert = alert
+        self.reason = reason
 
 
 class CodecUsageError(Exception):

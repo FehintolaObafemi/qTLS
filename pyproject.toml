@@ -36,4 +36,5 @@ timeout = 120
 filterwarnings = ["error"]
 markers = [
     "liboqs: needs the pinned liboqs build (OQS_INSTALL_PATH)",
+    "openssl: needs an OpenSSL >= 3.5 command-line tool (QTLS_OPENSSL); CI deselects these",
 ]
