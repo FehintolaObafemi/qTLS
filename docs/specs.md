@@ -163,7 +163,7 @@ Each decision states the reading chosen, the reading rejected, and the test that
 - **Ambiguity:** whether the certificate key may be a hybrid (ML-KEM plus X25519) or must be pure ML-KEM. -08 only lists draft KEM placeholders.
 - **Decision:** pure ML-KEM only. A hybrid certificate key stays open (PLAN §9, decision 2).
 - **Rejected reading:** accepting a hybrid key.
-- **Tests:** planned: Phase 4 — a 1216-byte or hybrid-OID certificate key is rejected with `unsupported_certificate`.
+- **Tests:** planned: Phase 4 — a hybrid-OID certificate key is rejected with `unsupported_certificate`; a wrong-length key under an ML-KEM OID is malformed and already rejected at parse with `bad_certificate` (D24); the FIPS 203 encapsulation-key check on certificate keys is added with AuthKEM.
 
 ### D12. The pre-distributed key handshake
 - **Ambiguity:** psk-06 leaves the fingerprint input, the extension bodies and the handling of rejected early data unspecified.
@@ -242,7 +242,7 @@ Each decision states the reading chosen, the reading rejected, and the test that
   - **Config D:** uses the same issuer choice, so B and D differ only in the leaf key and the handshake.
   - **SCTs:** 0 or 2, per PLAN §3, signed with the issuer algorithm.
 - **Rejected reading:** issuer signatures left implicit, or chosen differently for B and D.
-- **Tests:** planned: Phase 2 — the chain built for each (level, issuer) has the expected issuer algorithm OIDs, and its size equals the sum of its parts.
+- **Tests:** implemented — `tests/test_x509.py::test_chain_sizes_and_determinism`, `tests/test_x509.py::test_matrix_chains_verify`, `tests/test_x509.py::test_matrix_chains_cross_check`
 
 ### D20. Certificates: one strict DER codec, built and parsed by qTLS
 - **Ambiguity:** `cryptography`'s certificate builder can't sign with liboqs keys (Falcon, liboqs ML-DSA), and only qtls/crypto.py may import crypto libraries, so neither building nor parsing X.509 can use it.
@@ -253,7 +253,7 @@ Each decision states the reading chosen, the reading rejected, and the test that
   - **Falcon-512** uses the qTLS OID in §2.
   - **Validation time** is an explicit input to path validation, never the wall clock, so expiry tests and benchmarks are reproducible.
 - **Rejected reading:** a lenient (BER-accepting) parser, or a second codec for MTC.
-- **Tests:** planned: Phase 2 — round trips for every certificate the matrix builds. Rejections: indefinite length, non-minimal length, a non-minimal integer, trailing bytes, and a long-form length where short form fits. Expiry against an injected time.
+- **Tests:** implemented — `tests/test_der.py::test_structural_rejections`, `tests/test_der.py::test_bad_lengths_are_rejected`, `tests/test_der.py::test_non_minimal_integers_are_rejected`, `tests/test_der.py::test_rfc8448_certificate_round_trips`, `tests/test_x509.py::test_validity_boundaries`, `tests/test_x509.py::test_clock_is_never_read`
 
 ### D21. A repeated extension type
 - **Ambiguity:** RFC 8446 §4.2 says there MUST NOT be more than one extension of the same type in a block, but names no alert.
@@ -281,6 +281,34 @@ Each decision states the reading chosen, the reading rejected, and the test that
 - **Decision:** `HandshakeReader` refuses a message whose header announces more than 128 KiB, as soon as the 4-byte header arrives, with `illegal_parameter` (what OpenSSL sends for an excessive message size). 128 KiB covers every certificate chain in the matrix, including category-3 post-quantum chains with SCTs. The limit is a constructor parameter, so Phase 5 can raise it.
 - **Rejected reading:** no limit, or `decode_error` (the encoding is well formed).
 - **Tests:** implemented — `tests/test_messages.py::test_reader_rejects_oversized_and_unknown_headers_immediately`, `tests/test_messages.py::test_reader_reassembly_is_linear`
+
+### D24. The X.509 profile and path validation (configs A, B and D)
+- **Ambiguity:** RFC 5280 allows many profiles, RFC 8446 doesn't say which alert each path-validation failure gets, and a chain with several defects could get a different alert depending on check order.
+- **Decision:**
+  - **Profile qTLS builds and accepts:**
+    - v3 only, with extensions and no unique IDs; serial positive, at most 20 octets.
+    - Names: one CN RDN (UTF8String) when built; compared byte for byte.
+    - Signature-algorithm parameters absent (checked, including `id-alg-mtcProof`). Key OIDs are distinct from signature OIDs: an ECDSA key is `id-ecPublicKey` with `prime256v1`, and must be an uncompressed point *on the curve*. Post-quantum key lengths are checked at parse.
+    - Names are non-empty; a CA's basicConstraints is critical (RFC 5280 §4.2.1.9); authorityKeyIdentifier is non-critical; a dNSName is non-empty.
+    - Extensions: basicConstraints and keyUsage (both critical), subjectKeyIdentifier and authorityKeyIdentifier (RFC 7093 method 1: the first 160 bits of SHA-256 of the key), subjectAltName dNSName on the leaf, and optionally an SCT list on the leaf.
+    - DER DEFAULT values are never encoded: version v1, `critical FALSE` and `cA FALSE` are rejected if written out.
+    - Unknown critical extensions are rejected; unknown non-critical ones are ignored.
+  - **Parsing is algorithm-agnostic** and keeps exact bytes (TBS, SPKI, names, extensions). An unknown signature algorithm, such as an MTC's `id-alg-mtcProof`, parses; validation then refuses it with `unsupported_certificate`.
+  - **Validation order**, which decides the alert when a chain has several defects:
+    1. Parse every certificate → `bad_certificate`.
+    2. Find the trust anchors that could have issued the top certificate, by name → `unknown_ca`. Several anchors may share a name (key rollover); each is tried, so anchor order never changes the result. A sent root that matches an anchor exactly is ignored; a chain with no intermediates is fine. Anchors are a bare name and key, so their validity isn't checked.
+    3. Every signature algorithm must be one the peer accepts (`signature_algorithms_cert`) → `unsupported_certificate`.
+    4. Per link: issuer name, issuer key type matching the signature algorithm, then the signature → `bad_certificate`.
+    5. Issuers are CAs, with keyCertSign if keyUsage is present (RFC 5280 §6.1.4(n)), within their pathLen → `bad_certificate`.
+    6. Every certificate valid at the injected `now` (inclusive bounds) → `certificate_expired`, including not-yet-valid.
+    7. Leaf: not a CA → `bad_certificate`; a key algorithm qTLS knows → `unsupported_certificate`; a key of the kind the handshake's authentication mode needs (signature for CertificateVerify, KEM for AuthKEM) → `unsupported_certificate`; keyUsage that fits its key kind → `bad_certificate`: for a signature key, digitalSignature if keyUsage is present (RFC 8446 §4.4.2.2 allows it to be absent); for a KEM key, keyUsage must be present with keyEncipherment. Finally a dNSName equal to the server name, ASCII case-insensitive, with no wildcards, no trailing dots and no CN fallback → `bad_certificate`.
+  - **Deliberately narrower than RFC 5280/8446:** the chain must arrive in order, leaf first, with no extra certificates (RFC 8446 says SHOULD tolerate); pathLen counts every issuer, including self-issued ones (RFC 5280 exempts those; qTLS never issues them); any critical extension qTLS doesn't interpret, such as a critical extendedKeyUsage, is rejected.
+  - **Trust anchors** are local configuration: a malformed one is refused when it's created, never blamed on the peer.
+  - **MTCs:** an `id-alg-mtcProof` certificate parses, but its issuer is an MTC CA rather than an X.509 anchor, so until Phase 3 adds a dispatch on the signature algorithm *before* step 2, it gets `unknown_ca`.
+  - **SCTs:** carried as RFC 6962 says (an OCTET STRING inside extnValue holding the TLS-encoded list; `log_id` is SHA-256 of the log key's DER SubjectPublicKeyInfo). The 2-byte algorithm field holds the TLS SignatureScheme; for ECDSA that's exactly RFC 6962's (hash 4, signature 3), and RFC 6962 has no codepoint for post-quantum signatures. Each SCT is signed by a stand-in log key of the issuer's algorithm. CT validation itself is out of scope; SCTs are there for size realism.
+  - **Fixtures are deterministic:** every key and signature derives from a fixture seed and a role (`qtls/chains.py`).
+- **Rejected reading:** OpenSSL's choices of `decode_error` for malformed certificates and `bad_certificate` for not-yet-valid ones; `certificate_unknown` for a name mismatch; accepting a CN fallback or wildcards.
+- **Tests:** implemented — `tests/test_x509.py::test_parse_rejections`, `tests/test_x509.py::test_alert_precedence`, `tests/test_x509.py::test_anchors`, `tests/test_x509.py::test_per_link_checks`, `tests/test_x509.py::test_path_length`, `tests/test_x509.py::test_algorithm_confusion_is_an_alert_not_a_crash`, `tests/test_x509.py::test_name_mismatches`, `tests/test_x509.py::test_sent_root_is_ignored_and_no_intermediates_is_fine`, `tests/test_x509.py::test_mtc_style_certificate_parses_but_is_unsupported`, `tests/test_x509.py::test_kem_leaf_comes_back_as_kem`, `tests/test_x509.py::test_profile_rejections`, `tests/test_x509.py::test_anchors_sharing_a_name_are_order_independent`, `tests/test_x509.py::test_leaf_key_usage_rules`, `tests/test_x509.py::test_kem_leaf_needs_key_encipherment`, `tests/test_x509.py::test_ecdsa_key_oid_and_curve_point`, `tests/test_x509.py::test_signature_algorithm_parameters_must_be_absent`, `tests/test_x509.py::test_mtc_certificate_under_a_non_x509_issuer_is_unknown_ca`, `tests/test_x509.py::test_sct_fields`, `tests/test_x509.py::test_key_identifiers`, `tests/test_x509.py::test_san_must_be_a_dns_name`, `tests/test_x509.py::test_leaf_kind_must_fit_the_authentication_mode`, `tests/test_x509.py::test_malformed_anchors_are_local_errors`
 
 ## 5. How to change this file
 

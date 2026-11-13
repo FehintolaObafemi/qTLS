@@ -54,7 +54,7 @@ The README's A–E are named points in this matrix.
 
 **Fixed modelling choices.** Each choice decides who "wins", so it's fixed here rather than left to "approximate sizes":
 - One intermediate certificate.
-- A real DER X.509 built by `cryptography`.
+- A real DER X.509, built and parsed by qTLS's own strict codec (specs.md D20, D24).
 - TLS records fragmented at 2¹⁴ bytes.
 - SCT count swept as a matrix axis.
 
@@ -156,6 +156,9 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
   - the server's policy on duplicate or out-of-list `client_shares`;
   - an empty server Certificate → `decode_error` (RFC 8446 §4.4.2.4);
   - a received alert raises `PeerAlert` and is never answered.
+- **From the 2c review:** pass `expected_kind` to `verify_chain` on every authentication path (P8), and decide the `signature_algorithms_cert` fallback to `signature_algorithms` (RFC 8446 §4.2.3) that feeds its `accepted` set.
+- **From the 2c review:** add ML-DSA and ML-KEM leaves to the x509 fuzz corpus, and pin KEM-leaf chain bytes when Phase 4 uses them.
+- **From the 2c review:** run the OpenSSL ≥ 3.5 oracle tests (the `openssl` marker, including `-x509_strict` chain verification) in CI by pinning an OpenSSL build there, which the interop test needs anyway.
 - **Sans-I/O handshake state machine.** Transports are separate, in `qtls/transport/`:
   - **in-memory**, for tests
   - **TCP**, with `TCP_NODELAY` and one write per flight

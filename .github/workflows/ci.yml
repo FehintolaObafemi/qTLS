@@ -43,5 +43,6 @@ jobs:
           python -m pip install --require-hashes -r requirements/ci.txt
           python -m pip install --no-deps --no-build-isolation -e .
 
+      # The runner's OpenSSL (3.0) has no ML-DSA, so the OpenSSL oracle tests run locally only.
       - name: Run tests
-        run: python -m pytest
+        run: python -m pytest -m "not openssl"

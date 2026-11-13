@@ -732,6 +732,19 @@ class SigPrivateKey:
 
 
 _P256_ORDER = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+P256_ORDER = _P256_ORDER
+
+
+def ec_point_valid(public_key: bytes) -> bool:
+    """True if ``public_key`` is an uncompressed point on P-256 (checked at certificate parse)."""
+    data = _check_bytes("public key", public_key)
+    if len(data) != 65 or data[0] != 0x04:
+        return False
+    try:
+        ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), data)
+    except ValueError:
+        return False
+    return True
 
 
 def sig_generate(alg: str, backend: Backend, seed: bytes | None = None) -> SigPrivateKey:
