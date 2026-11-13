@@ -1,0 +1,7 @@
+repository: https://github.com/open-quantum-safe/liboqs
+commit: 5a1a854b0dc9f2141bdc771c555ee60c37950183 (tag 0.16.0)
+files:
+  tests/KATs/sig/kats.json (sha256 ef53768d8df5a893fa898e20813bbc551b246d286feae24ad74752c9984e822b) -> sig_kats.json (subset)
+format: SHA-256 of the .rsp text that tests/kat_sig.c prints; "single" = count 0, "all" = counts 0-99
+oracle: Falcon-512 - liboqs's published hash, which liboqs derives from the NIST round-3 Falcon KAT (not independently re-verified here; see docs/PLAN.md deferrals). ML-DSA - regression only (liboqs's own output; NIST ACVP vectors are the independent ML-DSA oracle).
+sha256 sig_kats.json: 480fdbcf7409625caf474e2dff46f3daa06dc74641221c7d92cd3b68278db453

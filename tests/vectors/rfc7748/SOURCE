@@ -1,0 +1,5 @@
+document: RFC 7748 §5.2 and §6.1 (X25519 only), https://www.rfc-editor.org/rfc/rfc7748.txt
+source sha256: recorded inside x25519.json
+regenerate: python scripts/extract_rfc7748.py <rfc7748.txt> tests/vectors/rfc7748/x25519.json
+oracle: independent (IETF test vectors)
+sha256 x25519.json: fe938e7bbe44d8924a84eb7c957a54dc50f7ed430838220f6ec2683991ff3f8c

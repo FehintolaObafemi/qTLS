@@ -135,18 +135,20 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
 - **Green:** [run 43453757836](https://github.com/FehintolaObafemi/qTLS/actions/runs/43453757836). 173 passed, 0 skipped, on Python 3.11 and 3.13.
 - **Red:** [run 43457010922](https://github.com/FehintolaObafemi/qTLS/actions/runs/43457010922). One ML-KEM-512 KAT value was corrupted, with its SHA-256 updated so only the KAT itself could catch it. 1 failed (`test_mlkem_decapsulation[ML-KEM-512-tc1]`) and 172 passed.
 
-**Deferred from the Phase 1 review** (each must be done before the phase named):
-- **Falcon-512 known-answer test** (before Phase 2 baselines). Falcon is liboqs-only, so it has no differential oracle. Today only a variable-length check rules out the padded variant. A verify KAT from the round-3 Falcon vectors needs a vendored download.
-- **ML-DSA key generation KAT on OpenSSL** (before Phase 2): seeded `sig_generate`, plus ACVP ML-DSA-keyGen vectors.
-- **Deterministic fixtures** (Phase 2): seeded signature keys, key import and export, and a derandomised signing hook. Phase 5's byte-for-byte reproducibility needs these, because Falcon and ECDSA signature lengths vary.
-- **X25519 private-key import** (Phase 2), so RFC 7748 and RFC 8448 vectors can run (threat model P4).
-- **AuthKEM golden vectors take SSs and the ciphertext as inputs** (Phase 4), because ML-KEM encapsulation can't be derandomised through either backend.
-- **Where X.509 is built** (decide at the start of Phase 2). `cryptography`'s builder can't sign with liboqs keys. Either `crypto.py` builds certificates, or certificates are hand-written DER signed through the wrapper.
-- **Hashing, HKDF and AEAD go through the wrapper and are counted** (Phase 2). Config C's verification cost is mostly Merkle hashing.
-- **An explicit security-level pairing key** (Phase 2) rather than comparing `nist_category` values (ML-DSA-44 is category 2, its ML-KEM-512 partner is category 1).
+**Deferred from the Phase 1 review:** all resolved in Phase 2a (2026-11-13).
+- **Falcon-512 KAT:** reproduces liboqs's published single and 100-count hashes through the wrapper. Re-anchoring to NIST's round-3 `.rsp` directly is still open, because it needs that archive.
+- **ML-DSA key generation KAT on both backends:** ACVP ξ → pk; liboqs also matches the expanded sk.
+- **Deterministic fixtures:** seeded keys, deterministic signing, and a fail-closed liboqs RNG hook scoped to one execution context (thread or asyncio task). Blocks in different contexts can run at once. An independent FIPS 204 `rnd` oracle (ACVP sigGen) is still open; seeded ML-DSA signing is tied to the liboqs KAT path instead.
+- **X25519 private-key import,** with RFC 7748 and RFC 8448 vectors.
+- **Where X.509 is built:** decided in specs.md D20.
+- **Hashing, HKDF and AEAD in the wrapper,** counted in operations and bytes.
+- **Security-level pairing:** `qtls/levels.py`.
+- **AuthKEM golden vectors** take SSs and the ciphertext as inputs, or use liboqs's derandomised encapsulation (Phase 4).
 
 ### Phase 2: Handshake core and baselines A and B (weeks 3–5)
 - **`qtls/messages.py`:** encoders and decoders that reject truncated input, trailing bytes and oversized lengths.
+- **One exception → alert table** (specs.md D10), defined once in the protocol layer and tested.
+- **Strict DER codec** `qtls/der.py` and hand-built certificates (specs.md D20).
 - **Sans-I/O handshake state machine.** Transports are separate, in `qtls/transport/`:
   - **in-memory**, for tests
   - **TCP**, with `TCP_NODELAY` and one write per flight
@@ -154,7 +156,7 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
 - **Record layer:** fragmentation at 2¹⁴ bytes, and sequence numbers.
 - **Configs A and B.**
 - **Oracles:**
-  - RFC 8448 §3: every intermediate secret, transcript hash and protected record, byte for byte.
+  - RFC 8448 §3, driven by **injected inputs** (keys, randoms, messages) through the codec, key schedule and record layer. The state machine can't negotiate RFC 8448's X25519 and RSA-PSS (D16). The handshake therefore takes an explicit randomness provider rather than calling `os.urandom` itself. It supplies the client random and ephemeral keys, and can also **inject KEM encapsulation results (ct, ss) and signing randomness**. OpenSSL can derandomise neither ML-KEM encapsulation nor ML-DSA signing, so byte-exact fixtures either inject these or use the liboqs backend.
   - An X25519MLKEM768 share-layout test, and a test that swapping the order of the combined secrets changes the result.
   - A gated OpenSSL ≥ 3.5 interop test for hybrid key exchange.
   - A size cross-check of config A against an OpenSSL capture.

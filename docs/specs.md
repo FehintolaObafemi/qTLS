@@ -12,7 +12,7 @@
 | Hybrid ML-KEM key agreement for TLS 1.3 | **RFC 10024** (Aug 2026), formerly `draft-ietf-tls-ecdhe-mlkem` | Proposed Standard. No test vectors. | `X25519MLKEM768` in every config |
 | ML-DSA in TLS 1.3 | `draft-ietf-tls-mldsa-06` | IANA has registered its codepoints | Configs B and C |
 | HPKE with post-quantum KEMs | `draft-ietf-hpke-pq-05` | CFRG draft. Appendix A has vectors. | D1 (HPKE derivation of SSs) |
-| TLS 1.3 | RFC 8446 | IANA registries now cite RFC 9846 (the 8446 revision). **Phase 2 entry criterion:** confirm nothing qTLS uses changed. | Everything |
+| TLS 1.3 | RFC 8446, as revised by **RFC 9846** (July 2026) | Read 2026-11-13: no change to the key schedule labels, HKDF-Expand-Label, record or message formats, or alerts that qTLS uses. New rules qTLS follows: never reuse a key share; handshake messages never span a key change. RFC 8448 remains the reference trace. | Everything |
 | TLS 1.3 example handshakes | RFC 8448 | | Phase 2 key schedule oracle |
 | HPKE | RFC 9180 | | D1 |
 | ML-KEM / ML-DSA | FIPS 203 / FIPS 204 | | Primitives |
@@ -34,6 +34,7 @@
 | SignatureScheme `ecdsa_secp256r1_sha256` | `0x0403` | RFC 8446 |
 | SignatureScheme `mldsa44` / `mldsa65` | `0x0904` / `0x0905`. The FIPS 204 context string must be **empty** in CertificateVerify. | draft-ietf-tls-mldsa-06 §3.2 and IANA |
 | SignatureScheme Falcon-512 | `0xFE50` (**qTLS private use**) | No standard codepoint |
+| SPKI / signature OID, Falcon-512 | `1.3.6.1.4.1.32473.1.1` (**qTLS**, under the documentation-only enterprise arc of RFC 5612) | No standard OID; never leaves qTLS (D20) |
 | AuthKEM SignatureScheme, HPKE variant (D1): ML-KEM-512 / ML-KEM-768 | `0xFE40` / `0xFE41` (**qTLS private use**) | -08 §4.1 assigns no ML-KEM codepoint. `0xFE00–0xFFFF` is private use. |
 | AuthKEM SignatureScheme, raw variant (D1): ML-KEM-512 / ML-KEM-768 | `0xFE42` / `0xFE43` (**qTLS private use**) | Separate codepoints, so mixing variants fails at negotiation |
 | HandshakeType `kem_encapsulation` | `30` (**experimental, not IANA-registered**; 27–253 are unassigned, and there's no private range) | AuthKEM -08 §4.2 |
@@ -241,6 +242,17 @@ Each decision states the reading chosen, the reading rejected, and the test that
   - **SCTs:** 0 or 2, per PLAN §3, signed with the issuer algorithm.
 - **Rejected reading:** issuer signatures left implicit, or chosen differently for B and D.
 - **Tests:** planned: Phase 2 — the chain built for each (level, issuer) has the expected issuer algorithm OIDs, and its size equals the sum of its parts.
+
+### D20. Certificates: one strict DER codec, built and parsed by qTLS
+- **Ambiguity:** `cryptography`'s certificate builder can't sign with liboqs keys (Falcon, liboqs ML-DSA), and only qtls/crypto.py may import crypto libraries, so neither building nor parsing X.509 can use it.
+- **Decision:**
+  - **One codec:** `qtls/der.py`, used for X.509 in Phase 2 and MTC in Phase 3.
+  - **Strict:** it rejects BER forms, indefinite lengths, non-minimal lengths and integers, and trailing bytes.
+  - **Signing and verification** go through crypto.py, by algorithm name.
+  - **Falcon-512** uses the qTLS OID in §2.
+  - **Validation time** is an explicit input to path validation, never the wall clock, so expiry tests and benchmarks are reproducible.
+- **Rejected reading:** a lenient (BER-accepting) parser, or a second codec for MTC.
+- **Tests:** planned: Phase 2 — round trips for every certificate the matrix builds. Rejections: indefinite length, non-minimal length, a non-minimal integer, trailing bytes, and a long-form length where short form fits. Expiry against an injected time.
 
 ## 5. How to change this file
 
