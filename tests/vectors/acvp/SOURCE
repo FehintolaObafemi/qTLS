@@ -6,5 +6,5 @@ files:
   gen-val/json-files/ML-DSA-sigVer-FIPS204/internalProjection.json     -> mldsa_sigver.json
 regenerate: python scripts/trim_acvp.py <download dir> tests/vectors/acvp
 sha256 mlkem_keygen.json: a7df69cff547ff6315ed1cdd3786fc2c3e52fe2e5dde68ce41aad44f242d3708
-sha256 mlkem_decap.json: 05f097c628a153ba8919d08a0869631297952a0c5cd7fa9bd090f03252912b10
+sha256 mlkem_decap.json: 3127db4aa70d1f5206cca29a92e42cc7b6d1643c3731ce355ab97c13618a97a5
 sha256 mldsa_sigver.json: 2dab5abea5f6ece95bb3a2b72e839b492cadc541fe962bb2b926591bf3ab796b
