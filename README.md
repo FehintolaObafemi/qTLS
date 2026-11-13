@@ -19,23 +19,39 @@ qTLS asks: **what if that last signature were a KEM instead?**
 
 This idea is called KEMTLS, or AuthKEM (Schwabe–Stebila–Wiggers, 2020; IETF draft `draft-celi-wiggers-tls-authkem`). The server's certificate holds an **ML-KEM public key** instead of a signature key. The server proves its identity by decrypting a challenge the client encapsulates to that key, and no handshake signature is sent.
 
-- ML-KEM-768 ciphertext: 1,088 bytes. ML-DSA-44 signature: 2,420 bytes.
-- KEM operations are far cheaper than signing.
+At matched security levels, what replaces the signature is smaller:
+
+| Level | Signature | KEM ciphertext |
+|---|---|---|
+| Category 3 | ML-DSA-65: 3,309 bytes | ML-KEM-768: 1,088 bytes |
+| Category 1–2 | ML-DSA-44: 2,420 bytes; FN-DSA-512: about 666 bytes | ML-KEM-512: 768 bytes |
+
+KEM decapsulation is also typically cheaper than signing. FN-DSA-512 is the hardest baseline to beat, so it's included.
 
 qTLS will **combine AuthKEM with Merkle Tree Certificates**, then measure it against the alternatives under realistic network conditions:
 
 | Config | Key exchange | Certificate | Server proves identity by |
 |---|---|---|---|
 | **A**: today's web | X25519MLKEM768 | ECDSA X.509 chain | ECDSA signature |
-| **B**: naive post-quantum | X25519MLKEM768 | ML-DSA X.509 chain | ML-DSA signature |
-| **C**: post-quantum web as planned | X25519MLKEM768 | Merkle Tree Certificate | ML-DSA signature |
-| **D**: AuthKEM | X25519MLKEM768 | ML-DSA X.509 chain, ML-KEM leaf | ML-KEM decapsulation |
+| **B**: naive post-quantum | X25519MLKEM768 | ML-DSA / FN-DSA X.509 chain | post-quantum signature |
+| **C**: post-quantum web as planned | X25519MLKEM768 | Merkle Tree Certificate | post-quantum signature |
+| **D**: AuthKEM | X25519MLKEM768 | post-quantum X.509 chain, ML-KEM leaf | ML-KEM decapsulation |
 | **E**: qTLS | X25519MLKEM768 | Merkle Tree Certificate, ML-KEM leaf | ML-KEM decapsulation |
 
-**Hypothesis:** E is fully post-quantum and makes the smallest, cheapest handshake of B–E, without the extra round trip that B's oversized flight causes. The trade-offs we expect to quantify:
-- AuthKEM delays server authentication by half a round trip.
-- It needs the client to learn the server's KEM key, either from the certificate or from a cache.
-- MTCs need clients to stay synced with tree heads.
+These five are named points in a larger matrix. The other axes are certificate kind (standalone vs landmark-relative MTC), number of SCTs, and key delivery. Comparisons are always at **matched NIST security levels**:
+- ML-DSA-44 or FN-DSA-512 against ML-KEM-512 (categories 1–2)
+- ML-DSA-65 against ML-KEM-768 (category 3)
+
+See [docs/PLAN.md §3](docs/PLAN.md).
+
+**Hypothesis:** at each security level, E sends fewer server bytes and uses less server CPU than the best signature-based option (C, or B with FN-DSA).
+
+**Costs we expect to quantify, in round trips** (AuthKEM -08, Figure 1):
+- **Explicit server authentication:** 2 RTT instead of 1 (on server Finished).
+- **Server-sent first data:** possible only after 1.5 RTT instead of 0.5.
+- **Client's first request and its response:** unchanged at 1 RTT and 2 RTT. The client's first request goes to an *implicitly* authenticated server.
+- **Key delivery:** the client must learn the server's KEM key, from the certificate or from a cache.
+- **MTC freshness:** clients must keep up-to-date landmarks, or fall back to larger standalone MTCs.
 
 ## What "better" means here (and what it doesn't)
 
@@ -56,22 +72,23 @@ See [docs/PLAN.md](docs/PLAN.md) for the phased plan, exit criteria and risks.
 
 ## Getting started
 
-*Not runnable yet.* Phase 1 of the plan sets up the environment. The planned stack is:
+So far only the crypto foundation (Phase 1) exists. You need Python ≥ 3.11, plus a C compiler and git to build liboqs.
 
-- Python ≥ 3.11
-- [`liboqs-python`](https://github.com/open-quantum-safe/liboqs-python) for ML-KEM and ML-DSA
-- [`cryptography`](https://cryptography.io) for X25519, HKDF and AEAD
-- Linux `tc netem`, or the built-in emulator, for network conditions
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e ".[test,oqs]" cmake
+OQS_INSTALL_PATH="$PWD/.oqs" PATH="$PWD/.venv/bin:$PATH" scripts/build_liboqs.sh
+OQS_INSTALL_PATH="$PWD/.oqs" .venv/bin/pytest
+```
+
+**Backends:**
+- [`cryptography`](https://cryptography.io) is the primary backend: X25519, ECDSA, ML-KEM-768, ML-DSA, X.509.
+- [`liboqs`](https://github.com/open-quantum-safe/liboqs) 0.16.0 adds ML-KEM-512 and FN-DSA-512, and acts as a second implementation for differential tests. It's built by `scripts/build_liboqs.sh` at a pinned commit. `liboqs-python`'s automatic downloader is never used.
+
+Timing results will come from a pinned Linux container using network namespaces and `tc netem` (Phase 5).
 
 ## Legacy code
 
-The repository's first iteration (April–May 2023) explored QKD and "quantum cryptography" simulations: `qkdProtocol.*`, `QCA.*`, `qTLS.py`, `Program.cs`, and the `.txt` design notes. Those files are **known broken** and are kept only for history:
-
-- The C# doesn't compile.
-- The Python targets Qiskit < 1.0 and has logic errors.
-- The BB84 simulation reports eavesdropping about 94% of the time with no eavesdropper.
-
-They'll move to `legacy/` in Phase 1 and are not part of the new design.
+The repository's first iteration (April–May 2023) explored QKD and "quantum cryptography" simulations. It now lives in [`legacy/`](legacy/), which explains what is broken and why. It is not part of the new design.
 
 ## References
 

@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    env:
+      OQS_INSTALL_PATH: ${{ github.workspace }}/.oqs
+      # Any skipped test fails the run, so crypto can't be silently bypassed.
+      QTLS_NO_SKIPS: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pinned liboqs build
+        uses: actions/cache@v4
+        with:
+          path: .oqs
+          key: liboqs-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build_liboqs.sh') }}
+
+      # A separate step, so a build failure is reported here instead of
+      # aborting pytest collection.
+      - name: Build liboqs (pinned commit)
+        run: scripts/build_liboqs.sh
+
+      - name: Install locked dependencies
+        run: |
+          python -m pip install --require-hashes -r requirements/ci.txt
+          python -m pip install --no-deps --no-build-isolation -e .
+
+      - name: Run tests
+        run: python -m pytest
