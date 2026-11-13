@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+build/
+dist/
+
+# Locally built liboqs (scripts/build_liboqs.sh)
+.oqs/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# .NET build output (legacy)
+bin/
+obj/
+
+# OS / editors
+.DS_Store
