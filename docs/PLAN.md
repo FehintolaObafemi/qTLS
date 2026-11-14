@@ -172,6 +172,23 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
   - A size cross-check of config A against an OpenSSL capture.
 - **Negative tests:** tampered certificate or signature, wrong CertificateVerify context, truncated transcript, an algorithm the client didn't offer, an untrusted root, an expired leaf, messages out of order or missing, and record tampering or replay.
 
+**Progress.** Phase 2 lands in sub-phases:
+- **2a–2c (done):** entry criteria, codec, key schedule, record layer, DER and X.509.
+- **2d (done):**
+  - `qtls/handshake.py`: a sans-I/O client and server with a (state, message) handler table, key-gated application data, protocol-defined flights, a per-state alert-key table (specs.md D17) and a keylog;
+  - `qtls/hybrid.py`: the X25519MLKEM768 layout;
+  - `qtls/configs.py`, and the in-memory transport;
+  - specs.md D25–D27.
+  - Its oracle is `tests/handshake_oracle.py`, an independent RFC 8446 observer built from raw primitives. It must catch ten shared-bug mutants. RFC 8448 checks the machine's packing and CertificateVerify content.
+- **2e (remaining):**
+  - the TCP transport (`TCP_NODELAY`, one write per flight, `receive_eof` on close);
+  - a pinned OpenSSL ≥ 3.5 in CI, which also turns on the `openssl`-marked tests;
+  - the OpenSSL interop test and vendored capture, which close P5;
+  - the config-A size check against the capture (D16);
+  - ML-DSA and ML-KEM leaves in the x509 fuzz corpus;
+  - decide whether `crypto.sig_verify` must reject a padded Falcon-512 signature (liboqs accepts a compact signature with zero bytes appended, so one signature has two encodings; found in the 2d review);
+  - a pluggable chain verifier in `Client._on_certificate` before Phase 3, because MTC changes the Certificate's content, not the message order.
+
 **Exit:** all of the above pass, and RFC 8448 matches exactly.
 
 ### Phase 3: Merkle Tree Certificates, config C (weeks 6–7)

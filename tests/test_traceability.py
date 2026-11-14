@@ -9,6 +9,8 @@
   records as met.
 * An implemented property cites only well-formed references to collected,
   module-level ``test_*`` functions in ``tests/test_*.py``, each defined once.
+* A planned row or decision may already cite the tests a finished part of a
+  phase added; every such ``tests/...`` citation must be valid too.
 
 The checker functions return a list of problems so the self-tests at the bottom
 can feed them mutated documents.
@@ -97,6 +99,14 @@ def check_refs(where: str, cell: str, tests: dict[tuple[str, str], int]) -> list
     return problems
 
 
+def check_cited_refs(where: str, text: str, tests: dict[tuple[str, str], int]) -> list[str]:
+    """Validate the ``tests/...`` citations inside free text (planned rows and decisions)."""
+    problems = []
+    for token in re.findall(r"`(tests/[^`]*)`", text):
+        problems += [p for p in check_refs(where, f"`{token}`", tests) if "outside citations" not in p]
+    return problems
+
+
 def check_threat_model(text: str, plan_text: str, root: Path) -> list[str]:
     problems = []
     met = met_phases(plan_text)
@@ -114,6 +124,8 @@ def check_threat_model(text: str, plan_text: str, root: Path) -> list[str]:
         problems += check_status(pid, status, met)
         if status == "implemented":
             problems += check_refs(pid, cell, tests)
+        else:
+            problems += check_cited_refs(pid, cell, tests)
     if ids != [f"P{i}" for i in range(1, len(ids) + 1)]:
         problems.append(f"property IDs not sequential and unique: {ids}")
     if len(ids) < MIN_PROPERTIES:
@@ -143,6 +155,8 @@ def check_specs(text: str, plan_text: str, root: Path) -> list[str]:
                 problems += check_refs(did, rest, tests)
             elif not rest.strip():
                 problems.append(f"{did}: planned test has no description")
+            else:
+                problems += check_cited_refs(did, rest, tests)
     if ids != [f"D{i}" for i in range(1, len(ids) + 1)]:
         problems.append(f"decision IDs not sequential and unique: {ids}")
     if len(ids) < MIN_DECISIONS:
@@ -202,6 +216,17 @@ THREAT_MODEL_MUTANTS = {
 def test_threat_model_checker_catches(mutant: str) -> None:
     old, new = THREAT_MODEL_MUTANTS[mutant]
     assert _mutate(old, new) != []
+
+
+def test_checker_validates_refs_in_planned_rows_and_decisions() -> None:
+    renamed = "`tests/test_handshake.py::test_matrix_handshakesX`"
+    text = THREAT_MODEL.read_text()
+    assert "`tests/test_handshake.py::test_matrix_handshakes`" in text
+    assert _mutate("`tests/test_handshake.py::test_matrix_handshakes`", renamed) != []
+    specs = SPECS.read_text()
+    old = "`tests/test_handshake.py::test_seeded_handshakes_are_pinned`"
+    assert old in specs
+    assert check_specs(specs.replace(old, renamed, 1), PLAN.read_text(), ROOT) != []
 
 
 def test_checker_catches_deleted_rows() -> None:

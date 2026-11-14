@@ -696,3 +696,44 @@ def test_typed_extension_decoders_only_raise_alert_errors() -> None:
     ):
         with pytest.raises(AlertError):
             decode(raw)
+
+
+# --------------------------------------------------------------------------- #
+# Every rejection names its check (the handshake reports it in ConnectionFailed.reason)
+# --------------------------------------------------------------------------- #
+
+
+def _reason(call) -> tuple[Alert, str | None]:  # noqa: ANN001
+    with pytest.raises(AlertError) as exc:
+        call()
+    return exc.value.alert, exc.value.reason
+
+
+def _client_hello_body(compression: bytes) -> bytes:
+    exts = m.encode_extensions([m.Extension(43, b"\x02\x03\x04"), m.Extension(0xFF00, b"")])
+    return b"\x03\x03" + bytes(32) + b"\x00" + b"\x00\x02\x13\x01" + compression + len(exts).to_bytes(2, "big") + exts
+
+
+def _server_hello_body(compression: int) -> bytes:
+    exts = m.encode_extensions([m.Extension(43, b"\x03\x04")])
+    return b"\x03\x03" + bytes(32) + b"\x00" + b"\x13\x01" + bytes([compression]) + len(exts).to_bytes(2, "big") + exts
+
+
+CODEC_REASONS = {
+    "message-size": (lambda: m.HandshakeReader(max_message=10).feed(b"\x01\x00\x00\x20"), Alert.illegal_parameter, "message-size"),
+    "duplicate-extension": (lambda: m.decode_extensions(b"\x00\x0a\x00\x00" * 2, "test"), Alert.illegal_parameter, "duplicate-extension"),
+    "server-name-type": (lambda: m.decode_server_name(b"\x00\x05\x01\x00\x02ab", m.Context.client_hello), Alert.illegal_parameter, "server-name"),
+    "server-name-ascii": (lambda: m.decode_server_name(b"\x00\x05\x00\x00\x02\xff\xfe", m.Context.client_hello), Alert.illegal_parameter, "server-name"),
+    "client-hello-compression": (lambda: m.ClientHello.decode(_client_hello_body(b"\x01\x01")), Alert.illegal_parameter, "compression"),
+    "server-hello-compression": (lambda: m.ServerHello.decode(_server_hello_body(1)), Alert.illegal_parameter, "compression"),
+    "hrr": (lambda: m.ServerHello.decode(b"\x03\x03" + m.HRR_RANDOM + bytes(12)), Alert.unexpected_message, "hrr"),
+    "unsupported-message": (lambda: m.decode_message(m.RawHandshake(4, b"", b"\x04\x00\x00\x00")), Alert.unexpected_message, "unsupported-message"),
+    "unknown-type": (lambda: m.HandshakeReader().feed(b"\x63\x00\x00\x00"), Alert.unexpected_message, "unknown-type"),
+    "truncated": (lambda: m.Finished.decode(b"\x00"), Alert.decode_error, "decode"),
+}  # fmt: skip
+
+
+@pytest.mark.parametrize("case", CODEC_REASONS)
+def test_codec_rejections_name_their_check(case: str) -> None:
+    call, alert, reason = CODEC_REASONS[case]
+    assert _reason(call) == (alert, reason)
