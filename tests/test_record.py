@@ -392,3 +392,48 @@ def test_record_layer_only_raises_alert_errors() -> None:
                     rl.receive(record, protection, ccs_allowed=rng.random() < 0.5)
                 except AlertError:
                     pass
+
+
+# --------------------------------------------------------------------------- #
+# Every rejection names its check (the handshake reports it in ConnectionFailed.reason)
+# --------------------------------------------------------------------------- #
+
+
+def _reason(call) -> tuple[Alert, str | None]:  # noqa: ANN001
+    with pytest.raises(AlertError) as exc:
+        call()
+    return exc.value.alert, exc.value.reason
+
+
+def _sealed_inner(inner: bytes) -> tuple[rl.RecordProtection, bytes]:
+    """A record whose inner plaintext is ``inner`` exactly, correctly encrypted."""
+    key, iv = bytes(16), bytes(12)
+    header = bytes([23, 3, 3]) + (len(inner) + 16).to_bytes(2, "big")
+    body = AESGCM(key).encrypt(iv, inner, header)
+    return rl.RecordProtection(key, iv), header + body
+
+
+def _plain(content_type: int, payload: bytes) -> bytes:
+    return bytes([content_type, 3, 3]) + len(payload).to_bytes(2, "big") + payload
+
+
+RECORD_REASONS = {
+    "announced-overflow": (lambda: rl.split_records(bytes([23, 3, 3]) + (rl.MAX_CIPHERTEXT + 1).to_bytes(2, "big")), Alert.record_overflow, "record-overflow"),
+    "plaintext-overflow": (lambda: rl.decode_plaintext(_plain(22, bytes(rl.MAX_FRAGMENT + 1))), Alert.record_overflow, "record-overflow"),
+    "unprotected-type": (lambda: rl.decode_plaintext(_plain(23, b"x")), Alert.unexpected_message, "unprotected-type"),
+    "ccs-body": (lambda: rl.decode_plaintext(_plain(20, b"\x02")), Alert.unexpected_message, "ccs-body"),
+    "empty-plaintext": (lambda: rl.decode_plaintext(_plain(22, b"")), Alert.unexpected_message, "empty-fragment"),
+    "outer-type": (lambda: rl.RecordProtection(bytes(16), bytes(12)).open(_plain(22, bytes(20))), Alert.unexpected_message, "outer-type"),
+    "ciphertext-overflow": (lambda: rl.RecordProtection(bytes(16), bytes(12)).open(_plain(23, bytes(rl.MAX_CIPHERTEXT + 1))), Alert.record_overflow, "record-overflow"),
+    "inner-overflow": (lambda: (lambda p, r: p.open(r))(*_sealed_inner(bytes(rl.MAX_INNER) + b"\x17")), Alert.record_overflow, "record-overflow"),
+    "no-content-type": (lambda: (lambda p, r: p.open(r))(*_sealed_inner(bytes(5))), Alert.unexpected_message, "no-content-type"),
+    "inner-type": (lambda: (lambda p, r: p.open(r))(*_sealed_inner(b"x\x14")), Alert.unexpected_message, "inner-type"),
+    "empty-protected": (lambda: (lambda p, r: p.open(r))(*_sealed_inner(b"\x16")), Alert.unexpected_message, "empty-fragment"),
+    "bad-mac": (lambda: rl.RecordProtection(bytes(16), bytes(12)).open(_plain(23, bytes(20))), Alert.bad_record_mac, "bad-mac"),
+}  # fmt: skip
+
+
+@pytest.mark.parametrize("case", RECORD_REASONS)
+def test_record_rejections_name_their_check(case: str) -> None:
+    call, alert, reason = RECORD_REASONS[case]
+    assert _reason(call) == (alert, reason)

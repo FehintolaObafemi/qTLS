@@ -48,7 +48,7 @@ def split_records(buffer: bytes) -> tuple[list[bytes], bytes]:
     while len(buffer) - pos >= HEADER_LEN:
         length = int.from_bytes(buffer[pos + 3 : pos + 5], "big")
         if length > MAX_CIPHERTEXT:
-            raise AlertError(Alert.record_overflow, f"record of {length} bytes announced")
+            raise AlertError(Alert.record_overflow, f"record of {length} bytes announced", "record-overflow")
         if len(buffer) - pos < HEADER_LEN + length:
             break
         records.append(buffer[pos : pos + HEADER_LEN + length])
@@ -88,14 +88,14 @@ def decode_plaintext(record: bytes) -> tuple[ContentType, bytes]:
     """
     outer, _, payload = _parse(record)
     if outer not in (ContentType.handshake, ContentType.alert, ContentType.change_cipher_spec):
-        raise AlertError(Alert.unexpected_message, f"unprotected record of type {outer}")
+        raise AlertError(Alert.unexpected_message, f"unprotected record of type {outer}", "unprotected-type")
     content_type = ContentType(outer)
     if len(payload) > MAX_FRAGMENT:
-        raise AlertError(Alert.record_overflow, f"plaintext fragment of {len(payload)} bytes")
+        raise AlertError(Alert.record_overflow, f"plaintext fragment of {len(payload)} bytes", "record-overflow")
     if content_type is ContentType.change_cipher_spec and payload != b"\x01":
-        raise AlertError(Alert.unexpected_message, "ChangeCipherSpec body must be 0x01")
+        raise AlertError(Alert.unexpected_message, "ChangeCipherSpec body must be 0x01", "ccs-body")
     if not payload and content_type in _MUST_NOT_BE_EMPTY:
-        raise AlertError(Alert.unexpected_message, f"zero-length {content_type.name} fragment")
+        raise AlertError(Alert.unexpected_message, f"zero-length {content_type.name} fragment", "empty-fragment")
     return content_type, payload
 
 
@@ -140,27 +140,27 @@ class RecordProtection:
     def open(self, record: bytes) -> tuple[ContentType, bytes]:
         outer, header, body = _parse(record)
         if outer != ContentType.application_data:
-            raise AlertError(Alert.unexpected_message, f"protected record has outer type {outer}")
+            raise AlertError(Alert.unexpected_message, f"protected record has outer type {outer}", "outer-type")
         if len(body) > MAX_CIPHERTEXT:
-            raise AlertError(Alert.record_overflow, f"ciphertext of {len(body)} bytes")
+            raise AlertError(Alert.record_overflow, f"ciphertext of {len(body)} bytes", "record-overflow")
         nonce = self._nonce()
         try:
             inner = self._aead.open(nonce, body, header)  # AAD is the header as received
         except crypto.AeadFailure as exc:
             # The sequence number doesn't advance (D22); the connection is torn down anyway.
-            raise AlertError(alert_for(exc), "record failed authentication") from None
+            raise AlertError(alert_for(exc), "record failed authentication", "bad-mac") from None
         self.seq += 1
         if len(inner) > MAX_INNER:
-            raise AlertError(Alert.record_overflow, f"inner plaintext of {len(inner)} bytes")
+            raise AlertError(Alert.record_overflow, f"inner plaintext of {len(inner)} bytes", "record-overflow")
         end = len(inner.rstrip(b"\x00"))
         if end == 0:
-            raise AlertError(Alert.unexpected_message, "record has no content type (all zeros)")
+            raise AlertError(Alert.unexpected_message, "record has no content type (all zeros)", "no-content-type")
         inner_type, content = inner[end - 1], inner[: end - 1]
         if inner_type not in _PROTECTED_TYPES:
-            raise AlertError(Alert.unexpected_message, f"protected record of inner type {inner_type}")
+            raise AlertError(Alert.unexpected_message, f"protected record of inner type {inner_type}", "inner-type")
         content_type = ContentType(inner_type)
         if not content and content_type in _MUST_NOT_BE_EMPTY:
-            raise AlertError(Alert.unexpected_message, f"zero-length {content_type.name} record")
+            raise AlertError(Alert.unexpected_message, f"zero-length {content_type.name} record", "empty-fragment")
         return content_type, content
 
 
@@ -193,10 +193,10 @@ def receive(
     if outer == ContentType.change_cipher_spec:
         decode_plaintext(record)  # validates the 0x01 body
         if not ccs_allowed:
-            raise AlertError(Alert.unexpected_message, "ChangeCipherSpec outside the handshake")
+            raise AlertError(Alert.unexpected_message, "ChangeCipherSpec outside the handshake", "ccs-outside-window")
         return None
     if protection is None or (plain_alerts_allowed and outer == ContentType.alert):
         return decode_plaintext(record)
     if outer != ContentType.application_data:
-        raise AlertError(Alert.unexpected_message, f"unprotected record of type {outer} after the key change")
+        raise AlertError(Alert.unexpected_message, f"unprotected record of type {outer} after the key change", "unprotected-after-keys")
     return protection.open(record)

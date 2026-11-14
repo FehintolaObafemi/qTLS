@@ -62,7 +62,7 @@ TLS13 = 0x0304
 
 
 def _decode_error(what: str) -> AlertError:
-    return AlertError(Alert.decode_error, what)
+    return AlertError(Alert.decode_error, what, "decode")
 
 
 class Reader:
@@ -164,10 +164,10 @@ class HandshakeReader:
         while len(self._buffer) - pos >= 4:
             msg_type = self._buffer[pos]
             if msg_type not in HandshakeType._value2member_map_:
-                raise AlertError(Alert.unexpected_message, f"unknown handshake type {msg_type}")
+                raise AlertError(Alert.unexpected_message, f"unknown handshake type {msg_type}", "unknown-type")
             length = int.from_bytes(self._buffer[pos + 1 : pos + 4], "big")
             if length > self._max:
-                raise AlertError(Alert.illegal_parameter, f"handshake message of {length} bytes announced")
+                raise AlertError(Alert.illegal_parameter, f"handshake message of {length} bytes announced", "message-size")
             if len(self._buffer) - pos < 4 + length:
                 break
             raw = bytes(self._buffer[pos : pos + 4 + length])
@@ -182,14 +182,14 @@ class HandshakeReader:
     def check_key_change(self) -> None:
         """Nothing may be left over (partially received) when the key changes."""
         if self._buffer:
-            raise AlertError(Alert.unexpected_message, "handshake message spans a key change")
+            raise AlertError(Alert.unexpected_message, "handshake message spans a key change", "key-change-span")
 
     def require_record_end(self, messages: Sequence[RawHandshake], index: int) -> None:
         """``messages[index]`` precedes a key change, so it must end its record."""
         if not 0 <= index < len(messages):
             raise CodecUsageError(f"index {index} is not one of the {len(messages)} messages")
         if index != len(messages) - 1:
-            raise AlertError(Alert.unexpected_message, "more data after a key-changing message in its record")
+            raise AlertError(Alert.unexpected_message, "more data after a key-changing message in its record", "record-end")
         self.check_key_change()
 
 
@@ -226,7 +226,7 @@ def decode_extensions(raw: bytes, what: str) -> tuple[Extension, ...]:
         ext_type = r.uint(2)
         data = r.vector(2, 0, 0xFFFF, f"extension {ext_type}")
         if ext_type in seen:
-            raise AlertError(Alert.illegal_parameter, f"{what}: duplicate extension {ext_type}")
+            raise AlertError(Alert.illegal_parameter, f"{what}: duplicate extension {ext_type}", "duplicate-extension")
         seen.add(ext_type)
         out.append(Extension(ext_type, data))
     return tuple(out)
@@ -294,13 +294,13 @@ def decode_server_name(data: bytes, context: Context) -> str | None:
     r.done()
     name_type = lst.uint(1)
     if name_type != 0:
-        raise AlertError(Alert.illegal_parameter, f"{what}: unsupported name type {name_type}")
+        raise AlertError(Alert.illegal_parameter, f"{what}: unsupported name type {name_type}", "server-name")
     host = lst.vector(2, 1, 0xFFFF, "host_name")
     lst.done()  # qTLS sends and accepts exactly one host_name
     try:
         return host.decode("ascii")
     except UnicodeDecodeError:
-        raise AlertError(Alert.illegal_parameter, f"{what}: host name is not ASCII") from None
+        raise AlertError(Alert.illegal_parameter, f"{what}: host name is not ASCII", "server-name") from None
 
 
 # supported_groups (RFC 8446 §4.2.7)
@@ -431,7 +431,7 @@ class ClientHello:
         suites = _u16_list(r.vector(2, 2, 0xFFFE, "cipher_suites"), "cipher_suites", "ClientHello")
         compression = r.vector(1, 1, 255, "legacy_compression_methods")
         if compression != b"\x00":
-            raise AlertError(Alert.illegal_parameter, "ClientHello: compression methods must be [null]")
+            raise AlertError(Alert.illegal_parameter, "ClientHello: compression methods must be [null]", "compression")
         exts = decode_extensions(r.vector(2, 7, 0xFFFF, "extensions"), "ClientHello extensions")  # RFC 9846
         r.done()
         return ClientHello(random, session_id, suites, exts)
@@ -467,11 +467,11 @@ class ServerHello:
         r.uint(2)  # legacy_version
         random = r.take(32)
         if random == HRR_RANDOM:
-            raise AlertError(Alert.unexpected_message, "HelloRetryRequest is not supported (D16)")
+            raise AlertError(Alert.unexpected_message, "HelloRetryRequest is not supported (D16)", "hrr")
         session_id = r.vector(1, 0, 32, "legacy_session_id_echo")
         suite = r.uint(2)
         if r.uint(1) != 0:
-            raise AlertError(Alert.illegal_parameter, "ServerHello: compression method must be null")
+            raise AlertError(Alert.illegal_parameter, "ServerHello: compression method must be null", "compression")
         exts = decode_extensions(r.vector(2, 6, 0xFFFF, "extensions"), "ServerHello extensions")
         r.done()
         return ServerHello(random, session_id, suite, exts)
@@ -585,7 +585,7 @@ def decode_message(msg: RawHandshake) -> HandshakeMessage:
     decoder = _DECODERS.get(msg.msg_type)  # type: ignore[call-overload]
     if decoder is None:
         name = HandshakeType(msg.msg_type).name
-        raise AlertError(Alert.unexpected_message, f"{name} is not supported")
+        raise AlertError(Alert.unexpected_message, f"{name} is not supported", "unsupported-message")
     return decoder(msg.body)
 
 

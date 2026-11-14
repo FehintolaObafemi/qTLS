@@ -28,9 +28,12 @@ def _derive(fixture_seed: bytes, role: str, length: int) -> bytes:
     return out[:length]
 
 
-def signing_key(alg: str, fixture_seed: bytes, role: str) -> crypto.SigPrivateKey:
+def signing_key(alg: str, fixture_seed: bytes, role: str, backend: crypto.Backend | None = None) -> crypto.SigPrivateKey:
+    """The role's key. Seeded key generation is the same on every backend, so
+    ``backend`` changes only which library holds (and signs with) the key."""
     params = crypto.SIGNATURES[alg]
-    backend: crypto.Backend = "openssl" if alg == "ECDSA-P256-SHA256" else "liboqs"
+    if backend is None:
+        backend = "openssl" if alg == "ECDSA-P256-SHA256" else "liboqs"
     for attempt in range(256):
         seed = _derive(fixture_seed, f"{role}/key/{attempt}", params.seed_len)
         if alg == "ECDSA-P256-SHA256" and not 0 < int.from_bytes(seed, "big") < crypto.P256_ORDER:
