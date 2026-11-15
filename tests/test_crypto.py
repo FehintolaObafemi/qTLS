@@ -476,3 +476,148 @@ def test_malformed_pq_signer_public_keys_are_invalid_signatures(backend: str) ->
         for garbage in (bytes(pk_len), b"\xff" * pk_len):
             with pytest.raises(InvalidSignature):
                 crypto.sig_verify(alg, garbage, MESSAGE, sig, backend)  # type: ignore[arg-type]
+
+
+# --------------------------------------------------------------------------- #
+# Falcon-512 canonical encoding (specs.md D28)
+# --------------------------------------------------------------------------- #
+
+FALCON_PADDED_LEN = 666  # Falcon-padded-512's fixed length, which liboqs also accepts for Falcon-512
+
+
+def falcon_encode(coeffs: list[int], nonce: bytes = bytes(40), pad_bits: int = 0) -> bytes:
+    """An independent Falcon compressed encoder (round-3 spec §3.11.2), for synthetic signatures."""
+    bits: list[int] = []
+    for c in coeffs:
+        m = abs(c)
+        bits.append(1 if c < 0 else 0)
+        bits += [(m >> i) & 1 for i in range(6, -1, -1)]
+        bits += [0] * (m >> 7) + [1]
+    tail = (-len(bits)) % 8
+    bits += [(pad_bits >> (tail - 1 - i)) & 1 for i in range(tail)]
+    body = bytes(int("".join(map(str, bits[i:i + 8])), 2) for i in range(0, len(bits), 8))
+    return bytes([0x39]) + nonce + body
+
+
+def natural_666() -> list[int]:
+    """512 coefficients whose encoding is exactly 666 bytes: 512*9 + 392 extra unary bits = 5000 bits = 625 bytes."""
+    return [200] * 392 + [-5] * 120
+
+
+def test_falcon_synthetic_encoding_of_exactly_666_bytes_is_canonical() -> None:
+    """Kills a lazy fix that rejects every 666-byte signature: a genuine compact one can be that long."""
+    sig = falcon_encode(natural_666())
+    assert len(sig) == FALCON_PADDED_LEN
+    assert crypto.falcon_canonical(sig)
+
+
+def _minus_zero() -> bytes:
+    """The last coefficient encoded as -0: the +1 and -1 encodings differ only in its sign bit."""
+    plus, minus = falcon_encode([3] * 511 + [1]), falcon_encode([3] * 511 + [-1])
+    sign = bytes(x ^ y for x, y in zip(plus, minus))
+    return bytes(x ^ y for x, y in zip(falcon_encode([3] * 511 + [0]), sign))
+
+
+TAILED = [3] * 511 + [128]  # 4609 bits, so the last byte has 7 unused bits
+NONCANONICAL_FALCON = {
+    "zero-byte-appended": lambda: falcon_encode([3] * 512) + b"\x00",
+    "padded-to-666": lambda: (s := falcon_encode([3] * 512)) + bytes(FALCON_PADDED_LEN - len(s)),
+    "nonzero-pad-bits": lambda: falcon_encode(TAILED, pad_bits=1),
+    "minus-zero": _minus_zero,
+    "truncated": lambda: falcon_encode(TAILED)[:-1],
+    "wrong-header": lambda: b"\x3a" + falcon_encode([3] * 512)[1:],
+    "too-large": lambda: falcon_encode([2048] + [3] * 511),
+    "nonce-only": lambda: bytes([0x39]) + bytes(40),
+}
+
+
+def test_falcon_encoder_controls_are_canonical() -> None:
+    """The bases the mutants below start from are accepted, so each rejection is the mutation's."""
+    for coeffs in ([3] * 512, TAILED, [3] * 511 + [0], [3] * 511 + [1], [3] * 511 + [-1], [2047] + [3] * 511):
+        assert crypto.falcon_canonical(falcon_encode(coeffs))
+
+
+@pytest.mark.parametrize("label", NONCANONICAL_FALCON)
+def test_falcon_noncanonical_encodings_are_rejected(label: str) -> None:
+    assert not crypto.falcon_canonical(NONCANONICAL_FALCON[label]())
+
+
+@pytest.mark.usefixtures("require_liboqs")
+def test_falcon_padded_signature_is_rejected_though_liboqs_accepts_it() -> None:
+    sk = crypto.sig_generate("Falcon-512", "liboqs", seed=b"\x05" * 48)
+    for i in range(20):
+        msg = b"msg %d" % i
+        sig = sk.sign(msg)
+        padded = sig + bytes(FALCON_PADDED_LEN - len(sig))
+        with crypto._oqs().Signature("Falcon-512") as raw:
+            assert raw.verify(msg, padded, sk.public_key) is True  # the second encoding D28 closes
+        crypto.sig_verify("Falcon-512", sk.public_key, msg, sig, "liboqs")
+        with pytest.raises(InvalidSignature):
+            crypto.sig_verify("Falcon-512", sk.public_key, msg, padded, "liboqs")
+
+
+@pytest.mark.usefixtures("require_liboqs")
+def test_falcon_canonical_check_never_rejects_a_real_signature() -> None:
+    sk = crypto.sig_generate("Falcon-512", "liboqs", seed=b"\x06" * 48)
+    for i in range(2000):
+        msg = i.to_bytes(4, "big")
+        crypto.sig_verify("Falcon-512", sk.public_key, msg, sk.sign(msg, seed=crypto.sha256(msg).digest() + bytes(16)), "liboqs")
+
+
+# --------------------------------------------------------------------------- #
+# ML-KEM encapsulation-key check (FIPS 203 §7.2), used at certificate parse
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(("alg", "backend"), [
+    ("ML-KEM-512", "liboqs"),  # OpenSSL's provider has no ML-KEM-512 here
+    ("ML-KEM-768", "openssl"),
+    ("ML-KEM-768", "liboqs"),
+])  # fmt: skip
+def test_kem_public_key_check_agrees_with_the_backends(alg: str, backend: str, request: pytest.FixtureRequest) -> None:
+    import random
+
+    if backend == "liboqs":
+        request.getfixturevalue("require_liboqs")
+
+    rng = random.Random(alg)
+    ek = crypto.kem_generate(alg, backend, seed=bytes(64)).public_key
+    agreed = {True: 0, False: 0}
+    for _ in range(300):
+        edited = bytearray(ek)
+        i = rng.randrange(len(ek) - 32)  # a coefficient byte, not rho
+        edited[i] = rng.randrange(256)
+        valid = crypto.kem_public_key_valid(alg, bytes(edited))
+        try:
+            crypto.kem_encapsulate(alg, bytes(edited), backend)
+            encapsulates = True
+        except crypto.InvalidPublicKey:
+            encapsulates = False
+        assert valid == encapsulates, i
+        agreed[valid] += 1
+    assert agreed[True] and agreed[False]  # both outcomes were exercised
+    assert not crypto.kem_public_key_valid(alg, ek[:-1])
+    with pytest.raises(UnknownAlgorithm):
+        crypto.kem_public_key_valid("ML-DSA-44", ek)
+
+
+@pytest.mark.parametrize("alg", ["ML-KEM-512", "ML-KEM-768"])
+@pytest.mark.parametrize("pair", ["first", "last"])
+@pytest.mark.parametrize("half", [0, 1])
+def test_kem_public_key_check_boundary_is_q(alg: str, pair: str, half: int) -> None:
+    """q - 1 is a valid coefficient and q is not, in either half of the first and the last 3-byte pair."""
+    n = crypto.KEMS[alg].public_key_len
+    ek = bytes(n)
+    base = 0 if pair == "first" else n - 32 - 3  # the last pair ends where rho begins
+
+    def with_coefficient(value: int) -> bytes:
+        out = bytearray(ek)
+        if half == 0:
+            out[base], out[base + 1] = value & 0xFF, value >> 8
+        else:
+            out[base + 1], out[base + 2] = (value & 0x0F) << 4, value >> 4
+        return bytes(out)
+
+    assert crypto.kem_public_key_valid(alg, with_coefficient(crypto.ML_KEM_Q - 1))
+    assert not crypto.kem_public_key_valid(alg, with_coefficient(crypto.ML_KEM_Q))
+    assert crypto.kem_public_key_valid(alg, ek[:-32] + b"\xff" * 32)  # rho is never checked

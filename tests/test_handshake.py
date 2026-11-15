@@ -27,7 +27,7 @@ from qtls import handshake as hs
 from qtls import keyschedule as ks
 from qtls import messages as m
 from qtls import record as rl
-from qtls.alerts import Alert, CodecUsageError
+from qtls.alerts import Alert, AlertError, CodecUsageError
 from qtls.handshake import (
     ApplicationData,
     Client,
@@ -1498,3 +1498,110 @@ def test_eof_mid_handshake_and_after_our_close() -> None:
     client, _, _ = _connected()
     client.close()
     assert client.receive_eof() == [ConnectionFailed(None, None, "truncated")]  # the peer never answered
+
+
+# --------------------------------------------------------------------------- #
+# The pluggable certificate verifier (specs.md D29, P8)
+# --------------------------------------------------------------------------- #
+
+
+class StubVerifier:
+    """Records each call; returns ``leaf`` (default: the real chain's leaf) or raises ``error``."""
+
+    def __init__(self, leaf: x509.VerifiedLeaf | None = None, error: BaseException | None = None) -> None:
+        self.calls: list[tuple[tuple[bytes, ...], dict]] = []
+        self.leaf, self.error = leaf, error
+
+    def verify(self, cert_data: tuple[bytes, ...], **kw: object) -> x509.VerifiedLeaf:
+        self.calls.append((cert_data, kw))
+        if self.error is not None:
+            raise self.error
+        return self.leaf or _real_leaf()
+
+
+@functools.cache
+def _real_leaf() -> x509.VerifiedLeaf:
+    c, _, chain = endpoints(A)
+    return hs.X509Verifier(c.anchors, NOW).verify(chain.cert_data, server_name=c.server_name,
+                                                   accepted=frozenset((0x0403,)), expected_kind="sig", backends=SEEDED_BACKENDS)  # fmt: skip
+
+
+def test_the_verifier_is_called_once_with_the_entries_and_the_handshake_needs() -> None:
+    stub = StubVerifier()
+    client, server = make(certificate_verifier=stub, anchors=())
+    link = memory.handshake(client, server)
+    assert client.state is State.CONNECTED and client.leaf is _real_leaf()
+    assert stub.calls == [(endpoints(A)[2].cert_data, {
+        "server_name": "qtls.test", "accepted": frozenset((0x0403,)), "expected_kind": "sig", "backends": client._backends,
+    })]
+    oracle(link)
+
+
+def test_the_verifier_gets_signature_algorithms_cert_when_it_is_sent() -> None:
+    stub = StubVerifier()
+    client, server = make(signature_algorithms_cert=(0x0403, 0x0904), certificate_verifier=stub)
+    memory.handshake(client, server)
+    assert client.state is State.CONNECTED
+    assert stub.calls[0][1]["accepted"] == frozenset((0x0403, 0x0904))
+
+
+@pytest.mark.parametrize("rule", ["certificate-context", "certificate-empty", "certificate-entry-extension"])
+def test_message_checks_run_before_the_verifier(rule: str) -> None:
+    stub = StubVerifier()
+    flight, alert, reason = FLIGHT_RULES[rule]
+    assert_fails(deliver_flight(flight(), certificate_verifier=stub), alert, reason)
+    assert stub.calls == []
+
+
+def test_certificate_verify_uses_the_leaf_the_verifier_returned() -> None:
+    other = chains.signing_key("ECDSA-P256-SHA256", b"other", "leaf")
+    leaf = dataclasses.replace(_real_leaf(), public_key=other.public_key)
+    assert_fails(deliver_flight(_flight(), certificate_verifier=StubVerifier(leaf)), Alert.decrypt_error, "cv-signature")
+
+
+@pytest.mark.parametrize(("leaf", "reason"), [
+    (lambda: dataclasses.replace(_real_leaf(), kind="kem", alg="ML-KEM-768"), "leaf-kind"),
+    (lambda: dataclasses.replace(_real_leaf(), alg="ML-DSA-65"), "leaf-alg"),
+])  # fmt: skip
+def test_the_state_machine_rechecks_the_returned_leaf(leaf, reason: str) -> None:  # noqa: ANN001
+    """P8 holds whatever a verifier returns: no KEM leaf, and no key the offered schemes can't use."""
+    assert_fails(deliver_flight(_flight(), certificate_verifier=StubVerifier(leaf())), Alert.unsupported_certificate, reason)
+
+
+def test_a_verifier_alert_fails_the_connection_with_its_reason() -> None:
+    error = AlertError(Alert.certificate_expired, "stub", "stub-reason")
+    assert_fails(deliver_flight(_flight(), certificate_verifier=StubVerifier(error=error)), Alert.certificate_expired, "stub-reason")
+
+
+def test_a_verifier_bug_is_internal_error_and_reraised() -> None:
+    t = reference(A)
+    client = waiting_client(certificate_verifier=StubVerifier(error=KeyError("bug")))
+    with pytest.raises(KeyError, match="bug"):
+        client.receive(plain(t.messages["SH"]) + sealed(s_hs(t), b"".join(_flight())))
+    assert _open(t.secrets["CLIENT_HANDSHAKE_TRAFFIC_SECRET"], client.data_to_send()) == (CT.alert, bytes([2, Alert.internal_error]))
+
+
+def test_anchors_are_required_only_by_the_default_verifier() -> None:
+    c, _, _ = endpoints(A)
+    with pytest.raises(CodecUsageError):
+        Client(dataclasses.replace(c, anchors=()))
+    Client(dataclasses.replace(c, anchors=(), certificate_verifier=StubVerifier()))
+
+
+def test_padded_falcon_certificate_verify_is_rejected() -> None:
+    """D28 through the handshake: the second Falcon encoding of a valid CertificateVerify signature."""
+    t = reference(B_FALCON)
+    cv = m.CertificateVerify.decode(t.messages["CV"][4:])
+    padded = m.encode_handshake(dataclasses.replace(cv, signature=cv.signature + bytes(666 - len(cv.signature))))
+    flight = [t.messages["EE"], t.messages["CERT"], padded, t.messages["SFIN"]]
+    client = waiting_client(B_FALCON)
+    assert_fails(client.receive(plain(t.messages["SH"]) + sealed(s_hs(t), b"".join(flight))), Alert.decrypt_error, "cv-signature")
+
+
+def test_the_verifier_must_return_the_presented_leaf() -> None:
+    """A valid leaf from another chain would let CertificateVerify check a key the server never sent."""
+    other = configs.endpoints(B44, not_before=NOT_BEFORE, now=NOW, backends=SEEDED_BACKENDS)[2]
+    c, _, _ = endpoints(A)
+    foreign = hs.X509Verifier((other.anchor,), NOW).verify(
+        other.cert_data, server_name="qtls.test", accepted=frozenset((0x0904,)), expected_kind="sig", backends=SEEDED_BACKENDS)
+    assert_fails(deliver_flight(_flight(), certificate_verifier=StubVerifier(foreign)), Alert.bad_certificate, "leaf-mismatch")

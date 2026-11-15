@@ -8,9 +8,7 @@ an unsigned edit would fail on its signature whatever else is wrong.
 from __future__ import annotations
 
 import datetime as dt
-import os
 import re
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -243,23 +241,11 @@ def test_we_accept_chains_cryptography_built(backend: str, alg: str) -> None:
     assert v.alg == alg
 
 
-def _openssl() -> str | None:
-    for candidate in (os.environ.get("QTLS_OPENSSL"), shutil.which("openssl"), "/opt/homebrew/opt/openssl@3/bin/openssl"):
-        if candidate and Path(candidate).exists():
-            out = subprocess.run([candidate, "version"], capture_output=True, text=True).stdout
-            m = re.match(r"OpenSSL (\d+)\.(\d+)", out)
-            if m and (int(m.group(1)), int(m.group(2))) >= (3, 5):
-                return candidate
-    return None
-
-
 @pytest.mark.openssl
 @pytest.mark.parametrize(("leaf_alg", "issuer_alg"), [m for m in MATRIX if "Falcon-512" not in m], ids=lambda v: v)
 @pytest.mark.parametrize("scts", [0, 2])
-def test_openssl_verifies_our_chains_strictly(require_liboqs: None, tmp_path: Path, leaf_alg: str, issuer_alg: str, scts: int) -> None:
-    binary = _openssl()
-    if binary is None:
-        pytest.skip("OpenSSL >= 3.5 not found (set QTLS_OPENSSL)")
+def test_openssl_verifies_our_chains_strictly(require_liboqs: None, require_openssl: str, tmp_path: Path, leaf_alg: str, issuer_alg: str, scts: int) -> None:
+    binary = require_openssl
     chain = chain_for(leaf_alg, issuer_alg, scts)
     pem = lambda d: cx.load_der_x509_certificate(d).public_bytes(serialization.Encoding.PEM)  # noqa: E731
     (tmp_path / "root.pem").write_bytes(pem(chain.root_der))
@@ -873,3 +859,168 @@ def test_inner_algorithm_with_null_parameters_differs_from_outer() -> None:
 def test_signature_codepoints_are_signature_algorithms_only() -> None:
     kem_points = {cp for a in x509.ALGORITHMS if a.kind == "kem" for cp in a.codepoints}
     assert x509.SIGNATURE_CODEPOINTS and not (x509.SIGNATURE_CODEPOINTS & kem_points)
+
+
+# --------------------------------------------------------------------------- #
+# Post-quantum and KEM leaves in the fuzz corpus (2c review carry-over)
+# --------------------------------------------------------------------------- #
+
+PQ_FUZZ = [  # (leaf, issuer): every leaf kind the configurations use
+    ("ML-DSA-44", "ML-DSA-44"),
+    ("ML-DSA-65", "ML-DSA-65"),
+    ("Falcon-512", "ML-DSA-44"),
+    ("ML-DSA-44", "Falcon-512"),
+    ("ML-KEM-512", "ML-DSA-44"),
+    ("ML-KEM-768", "ML-DSA-65"),
+]
+PQ_FUZZ_N = 300
+
+
+def pq_mutants(leaf_alg: str, issuer_alg: str):  # noqa: ANN201
+    """Seeded mutants of a fixture chain: raw bit flips, and TBS edits re-signed by the real issuer.
+
+    Half the re-signed edits avoid the SPKI: a post-quantum key is most of a
+    TBS, so uniform flips would almost only test "the key changed".
+    """
+    import random
+
+    chain = chain_for(leaf_alg, issuer_alg)
+    issuer_keys = [chains.signing_key(issuer_alg, b"qtls fixture v1", role) for role in ("intermediate", "root")]
+    sign_seed = bytes(crypto.SIGNATURES[issuer_alg].sign_seed_len)
+    rng = random.Random(f"{leaf_alg}/{issuer_alg}")
+    good = list(chain.cert_data)
+    for i in range(PQ_FUZZ_N):
+        target = rng.randrange(2)
+        if i % 2 == 0:
+            cert = bytearray(good[target])
+            for _ in range(rng.randint(1, 3)):
+                cert[rng.randrange(len(cert))] ^= 1 << rng.randrange(8)
+            mutated = bytes(cert)
+        else:
+            tbs, alg, _ = der.parse(good[target]).children()
+            raw = bytearray(tbs.raw)
+            if i % 4 == 1:
+                pos = rng.randrange(4, len(raw))
+            else:  # inside one TBS field other than the SPKI (children: version .. extensions)
+                header = len(tbs.raw) - len(tbs.contents)
+                spans, off = [], header
+                for index, child in enumerate(tbs.children()):
+                    if index != 6:
+                        spans.append((off, off + len(child.raw)))
+                    off += len(child.raw)
+                start, end = rng.choice(spans)
+                pos = rng.randrange(start, end)
+            raw[pos] ^= 1 << rng.randrange(8)
+            mutated = der.seq(bytes(raw), alg.raw, der.bit_string(issuer_keys[target].sign(bytes(raw), seed=sign_seed)))
+        candidate = list(good)
+        candidate[target] = mutated
+        yield i, candidate, chain
+
+
+def _pq_outcomes(leaf_alg: str, issuer_alg: str) -> tuple[list[tuple[int, list[bytes]]], dict[str, int]]:
+    kind = x509.BY_NAME[leaf_alg].kind
+    accepted, reasons = [], {}
+    for i, candidate, chain in pq_mutants(leaf_alg, issuer_alg):
+        try:
+            verify(candidate, [chain.anchor], expected_kind=kind)
+        except AlertError as exc:
+            assert exc.reason, i
+            reasons[exc.reason] = reasons.get(exc.reason, 0) + 1
+        else:
+            accepted.append((i, candidate))
+    return accepted, reasons
+
+
+PQ_FUZZ_PINNED = {  # accepted mutants, and rejections by reason; seeded, so any change is a behaviour change
+    ("ML-DSA-44", "ML-DSA-44"): (57, {"alg-mismatch": 10, "der": 46, "issuer-name": 7, "san": 1, "signature": 164, "tbs-shape": 2, "unknown-anchor": 5, "unknown-critical": 2, "version": 6}),
+    ("ML-DSA-65", "ML-DSA-65"): (49, {"alg-mismatch": 16, "der": 49, "issuer-key-type": 1, "issuer-name": 6, "leaf-key": 1, "name": 2, "signature": 170, "tbs-shape": 1, "unknown-anchor": 3, "version": 2}),
+    ("Falcon-512", "ML-DSA-44"): (38, {"alg-mismatch": 10, "der": 55, "issuer-name": 2, "leaf-key": 2, "serial": 1, "signature": 178, "tbs-shape": 1, "unknown-anchor": 4, "unknown-critical": 1, "version": 8}),
+    ("ML-DSA-44", "Falcon-512"): (54, {"alg-mismatch": 10, "der": 71, "issuer-name": 7, "signature": 147, "tbs-shape": 1, "unknown-anchor": 4, "unknown-critical": 2, "validity": 1, "version": 3}),
+    ("ML-KEM-512", "ML-DSA-44"): (44, {"alg-mismatch": 9, "basic-constraints": 1, "der": 51, "issuer-name": 12, "kem-key": 1, "san": 1, "serial": 2, "signature": 168, "tbs-shape": 2, "unknown-anchor": 3, "unknown-critical": 1, "validity": 1, "version": 4}),
+    ("ML-KEM-768", "ML-DSA-65"): (37, {"alg-mismatch": 13, "der": 53, "issuer-key-type": 1, "issuer-name": 9, "kem-key": 4, "serial": 2, "signature": 171, "unknown-anchor": 3, "unknown-critical": 2, "version": 5}),
+}  # fmt: skip
+
+
+@pytest.mark.usefixtures("require_liboqs")
+@pytest.mark.parametrize(("leaf_alg", "issuer_alg"), PQ_FUZZ)
+def test_pq_fuzz_only_raises_alert_errors_with_reasons(leaf_alg: str, issuer_alg: str) -> None:
+    """Every mutant either verifies or is an AlertError with a reason; the outcome counts are pinned."""
+    accepted, reasons = _pq_outcomes(leaf_alg, issuer_alg)
+    assert (len(accepted), reasons) == PQ_FUZZ_PINNED[(leaf_alg, issuer_alg)]
+    assert len(accepted) + sum(reasons.values()) == PQ_FUZZ_N
+
+
+# OpenSSL rejects these and we accept them, by design: qTLS finds an issuer by
+# name and signature, never by key identifier, and doesn't require the key
+# identifier extensions (specs.md D24; RFC 5280 makes them a CA duty, not a
+# relying-party check). A mutant that breaks either extension is accepted here.
+OPENSSL_ONLY = {
+    20: "unable to get local issuer certificate (an AKID/SKID mismatch; OpenSSL looks issuers up by key id)",
+    85: "missing Authority Key Identifier (-x509_strict)",
+    86: "missing Subject Key Identifier (-x509_strict)",
+}
+
+
+OPENSSL_ONLY_PINNED = {  # OpenSSL error code -> how many accepted mutants it rejects that way
+    ("ML-DSA-44", "ML-DSA-44"): {20: 3, 86: 1},
+    ("ML-DSA-65", "ML-DSA-65"): {20: 1, 85: 1},
+    ("ML-KEM-512", "ML-DSA-44"): {20: 4},
+    ("ML-KEM-768", "ML-DSA-65"): {20: 5, 86: 1},
+}
+
+
+@pytest.mark.openssl
+@pytest.mark.usefixtures("require_liboqs")
+@pytest.mark.parametrize(("leaf_alg", "issuer_alg"), [c for c in PQ_FUZZ if "Falcon-512" not in c])
+def test_openssl_agrees_with_every_accepted_mutant(require_openssl: str, tmp_path: Path, leaf_alg: str, issuer_alg: str) -> None:
+    """Differential: what we accept, OpenSSL -x509_strict accepts too, except the documented key-id cases."""
+    accepted, _ = _pq_outcomes(leaf_alg, issuer_alg)
+    chain = chain_for(leaf_alg, issuer_alg)
+    pem = lambda d: cx.load_der_x509_certificate(d).public_bytes(serialization.Encoding.PEM)  # noqa: E731
+    (tmp_path / "root.pem").write_bytes(pem(chain.root_der))
+    purpose = ["-purpose", "sslserver"] if x509.BY_NAME[leaf_alg].kind == "sig" else []
+    disagreements, exempted = {}, {}
+    for i, candidate in accepted:
+        (tmp_path / "leaf.pem").write_bytes(pem(candidate[0]))
+        (tmp_path / "inter.pem").write_bytes(pem(candidate[1]))
+        result = subprocess.run(
+            [require_openssl, "verify", "-x509_strict", "-attime", str(int(NOW.timestamp())), "-verify_hostname", NAME,
+             *purpose, "-CAfile", str(tmp_path / "root.pem"), "-untrusted", str(tmp_path / "inter.pem"), str(tmp_path / "leaf.pem")],
+            capture_output=True, text=True,
+        )  # fmt: skip
+        if result.returncode != 0:
+            m = re.search(r"error (\d+) at \d+ depth", result.stdout + result.stderr)
+            code = int(m[1]) if m else None
+            if code not in OPENSSL_ONLY:
+                disagreements[i] = result.stdout + result.stderr
+            else:
+                exempted[code] = exempted.get(code, 0) + 1
+    assert disagreements == {}
+    assert exempted == OPENSSL_ONLY_PINNED[(leaf_alg, issuer_alg)]  # the documented divergence can't quietly grow
+
+
+@pytest.mark.usefixtures("require_liboqs")
+@pytest.mark.parametrize(("leaf_alg", "issuer_alg"), [("ML-KEM-512", "ML-DSA-44"), ("ML-KEM-768", "ML-DSA-65")])
+def test_kem_leaf_with_an_unreduced_key_is_a_bad_certificate(leaf_alg: str, issuer_alg: str) -> None:
+    """The 2e OpenSSL differential found these accepted: a KEM key no backend would encapsulate to."""
+    chain = chain_for(leaf_alg, issuer_alg)
+    inter_key = chains.signing_key(issuer_alg, b"qtls fixture v1", "intermediate")
+    leaf_der = chain.cert_data[0]
+    key = x509.parse(leaf_der).public_key
+    bad_key = bytes([0xFF, key[1] | 0x0F]) + key[2:]  # first coefficient 4095 >= q
+    tbs, alg, _ = der.parse(leaf_der).children()
+    bad_tbs = tbs.raw.replace(key, bad_key)
+    assert bad_tbs != tbs.raw
+    bad = der.seq(bad_tbs, alg.raw, der.bit_string(inter_key.sign(bad_tbs, seed=bytes(crypto.SIGNATURES[issuer_alg].sign_seed_len))))
+    fails(Alert.bad_certificate, "kem-key", lambda: verify([bad, chain.cert_data[1]], [chain.anchor], expected_kind="kem"))
+
+
+@pytest.mark.usefixtures("require_liboqs")
+def test_falcon_certificate_with_the_padded_signature_encoding_is_rejected() -> None:
+    """D28 on the certificate path: the same signature, zero-padded to 666 bytes, is another certificate."""
+    chain = chain_for("ML-DSA-44", "Falcon-512")
+    tbs, alg, sig = der.parse(chain.cert_data[0]).children()
+    signature = der.parse(sig.raw).contents[1:]  # BIT STRING: unused-bits octet, then the signature
+    assert len(signature) < 666
+    padded = der.seq(tbs.raw, alg.raw, der.bit_string(signature + bytes(666 - len(signature))))
+    fails(Alert.bad_certificate, "signature", lambda: verify([padded, chain.cert_data[1]], [chain.anchor]))

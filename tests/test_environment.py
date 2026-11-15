@@ -49,6 +49,41 @@ def test_native_liboqs_is_the_pinned_build() -> None:
     assert f'LIBOQS_SHA="{crypto.LIBOQS_SHA}"' in script
 
 
+def test_openssl_build_script_matches_the_pin() -> None:
+    import openssl_tools
+
+    script = (ROOT / "scripts" / "build_openssl.sh").read_text()
+    assert f'OPENSSL_TAG="{openssl_tools.OPENSSL_TAG}"' in script
+    assert f'OPENSSL_SHA="{openssl_tools.OPENSSL_SHA}"' in script
+
+
+def test_ci_refuses_an_unpinned_openssl(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """With QTLS_NO_SKIPS=1 there is no PATH fallback, and the binary must be the recorded pinned build."""
+    import openssl_tools
+
+    monkeypatch.setenv("QTLS_NO_SKIPS", "1")
+    monkeypatch.delenv("QTLS_OPENSSL", raising=False)
+    assert openssl_tools.locate()[0] is None
+    fake = tmp_path / "bin" / "openssl"
+    fake.parent.mkdir()
+    monkeypatch.setenv("QTLS_OPENSSL", str(fake))
+
+    def build(version: str, *, tag: str = openssl_tools.OPENSSL_TAG, sha: str = openssl_tools.OPENSSL_SHA,
+              recorded: str | None = None) -> tuple[str | None, str]:  # fmt: skip
+        fake.write_text(f"#!/bin/sh\necho 'OpenSSL {version} 9 Jun 2026'\n")
+        fake.chmod(0o755)
+        digest = recorded or hashlib.sha256(fake.read_bytes()).hexdigest()
+        (tmp_path / "BUILD_INFO").write_text(f"tag={tag}\nsha={sha}\nbin_sha256={digest}\n")
+        return openssl_tools.locate()
+
+    assert build("3.6.3") == (str(fake), "")
+    refused = (None, f"{fake} isn't the pinned {openssl_tools.OPENSSL_TAG} build")
+    assert build("3.6.3", recorded="0" * 64) == refused  # not the binary BUILD_INFO recorded
+    assert build("3.6.2") == refused  # recorded, but another version
+    assert build("3.6.3", sha="deadbeef") == refused
+    assert build("3.6.3", tag="openssl-3.6.2") == refused
+
+
 def test_liboqs_refused_without_pinned_build(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -69,7 +104,7 @@ def test_build_artifacts_are_not_tracked() -> None:
     tracked = subprocess.run(
         ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
     ).stdout.splitlines()
-    offenders = [p for p in tracked if p.split("/", 1)[0] in {"obj", "bin", ".oqs", ".venv"}]
+    offenders = [p for p in tracked if p.split("/", 1)[0] in {"obj", "bin", ".oqs", ".openssl", ".venv"}]
     assert offenders == []
 
 
@@ -234,7 +269,26 @@ def test_no_skip_guard(
     ))
     pytester.makepyfile(body)
     monkeypatch.setenv("QTLS_NO_SKIPS", no_skips)
+    monkeypatch.delenv("QTLS_MIN_OPENSSL_TESTS", raising=False)  # set in CI; this run has no OpenSSL tests
     assert pytester.runpytest_subprocess("-p", "no:cacheprovider").ret == expected
+
+
+@pytest.mark.parametrize(("args", "expected"), [((), 0), (("-m", "not openssl"), 1), (("-k", "not test_b"), 1)],
+                         ids=["ran", "deselected", "one-deselected"])  # fmt: skip
+def test_ci_needs_the_openssl_tests_to_have_run(
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch, args: tuple[str, ...], expected: int
+) -> None:
+    """QTLS_NO_SKIPS catches skips; QTLS_MIN_OPENSSL_TESTS catches a deselected or uncollected suite."""
+    pytester.makeconftest((ROOT / "tests" / "conftest.py").read_text().replace('pytest_plugins = ["pytester"]', ""))
+    pytester.makeini("[pytest]\nmarkers =\n    openssl: x\n")
+    pytester.makepyfile(
+        "import pytest\n@pytest.mark.openssl\ndef test_a():\n    pass\n@pytest.mark.openssl\ndef test_b():\n    pass\n"
+        # Parametrize ids named "openssl" are keywords too; they mustn't count (full-review Block).
+        "@pytest.mark.parametrize('backend', ['openssl', 'liboqs'])\ndef test_c(backend):\n    pass\n"
+    )
+    monkeypatch.setenv("QTLS_NO_SKIPS", "1")
+    monkeypatch.setenv("QTLS_MIN_OPENSSL_TESTS", "2")
+    assert pytester.runpytest_subprocess("-p", "no:cacheprovider", *args).ret == expected
 
 
 def test_only_crypto_module_imports_crypto_libraries() -> None:
@@ -256,7 +310,20 @@ def test_vendored_vectors_match_recorded_hashes() -> None:
         source = d / "SOURCE"
         assert source.is_file(), f"{d.name} has no SOURCE file"
         recorded = dict(re.findall(r"^sha256 (\S+): ([0-9a-f]{64})$", source.read_text(), re.M))
-        present = {p.name for p in d.iterdir() if p.name != "SOURCE"}
+        present = {str(p.relative_to(d)) for p in d.rglob("*") if p.is_file() and p.name != "SOURCE"}
         assert set(recorded) == present, f"{d.name}: unpinned or missing files"
         for name, digest in recorded.items():
             assert hashlib.sha256((d / name).read_bytes()).hexdigest() == digest, f"{d.name}/{name}"
+
+
+def test_ci_openssl_floor_equals_the_collected_openssl_tests() -> None:
+    """Adding an OpenSSL test must raise CI's floor too, or deselecting it would go unnoticed."""
+    floor = re.search(r'QTLS_MIN_OPENSSL_TESTS: "(\d+)"', (ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    assert floor is not None
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-m", "openssl", "-p", "no:cacheprovider", "tests"],
+        cwd=ROOT, capture_output=True, text=True, check=True,
+        env={k: v for k, v in os.environ.items() if k not in ("QTLS_NO_SKIPS", "QTLS_MIN_OPENSSL_TESTS")},  # collection only
+    )  # fmt: skip
+    collected = [line for line in result.stdout.splitlines() if "::" in line]
+    assert int(floor[1]) == len(collected)
