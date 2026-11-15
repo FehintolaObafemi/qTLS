@@ -180,16 +180,17 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
   - `qtls/configs.py`, and the in-memory transport;
   - specs.md D25–D27.
   - Its oracle is `tests/handshake_oracle.py`, an independent RFC 8446 observer built from raw primitives. It must catch ten shared-bug mutants. RFC 8448 checks the machine's packing and CertificateVerify content.
-- **2e (remaining):**
-  - the TCP transport (`TCP_NODELAY`, one write per flight, `receive_eof` on close);
-  - a pinned OpenSSL ≥ 3.5 in CI, which also turns on the `openssl`-marked tests;
-  - the OpenSSL interop test and vendored capture, which close P5;
-  - the config-A size check against the capture (D16);
-  - ML-DSA and ML-KEM leaves in the x509 fuzz corpus;
-  - decide whether `crypto.sig_verify` must reject a padded Falcon-512 signature (liboqs accepts a compact signature with zero bytes appended, so one signature has two encodings; found in the 2d review);
-  - a pluggable chain verifier in `Client._on_certificate` before Phase 3, because MTC changes the Certificate's content, not the message order.
+- **2e (done):**
+  - `qtls/transport/tcp.py` (specs.md D29): `TCP_NODELAY`, one write per reaction with the application hook first (so Finished and first data, and the server flight and 0.5-RTT data, share a write), full duplex, one monotonic deadline per call, typed failures whatever the timing, and per-send, per-arrival and per-event timestamps for Phase 5;
+  - `scripts/build_openssl.sh`: OpenSSL 3.6.3 pinned by commit and built in CI, so the `openssl`-marked tests run on every PR, and CI fails if fewer than the expected number ran;
+  - `tests/test_interop.py`: qTLS ↔ OpenSSL in both directions for A, A with SCTs, B/ML-DSA-44 and B/ML-DSA-65, on both backends, with keylog equality, and hybrid-layout mutants that must fail (closes P5);
+  - `tests/vectors/openssl/`: four vendored OpenSSL-to-OpenSSL captures (default and 1024-byte framing), read by a keylog-mode oracle and by qTLS's own codec; D16's size comparison;
+  - PQ and KEM leaves in the x509 fuzz corpus, with an OpenSSL `-x509_strict` differential, which found that an ML-KEM leaf key failing the FIPS 203 modulus check was accepted (now `kem-key`, D24);
+  - Falcon-512 signatures have one encoding (D28), and the server-certificate verifier is pluggable with postconditions in the state machine (D30). Phase 3 extends its interface for the ClientHello landmark advertisement (D15) once the trust-anchor-ids draft is read.
 
 **Exit:** all of the above pass, and RFC 8448 matches exactly.
+
+**Met on 2026-11-15.** Phases 2a–2e, each reviewed by architect, engineer and tester until all three approved. `docs/specs.md` D20–D30.
 
 ### Phase 3: Merkle Tree Certificates, config C (weeks 6–7)
 - **`qtls/mtc.py`, implementing MTC -08:**

@@ -1,0 +1,33 @@
+{
+  "openssl": "OpenSSL 3.6.3 9 Jun 2026 (Library: OpenSSL 3.6.3 9 Jun 2026)",
+  "case": "B65-frag1024",
+  "config": "B/ML-DSA-65/ML-DSA-65/0",
+  "now": "2026-01-31T00:00:00+00:00",
+  "server_name": "qtls.test",
+  "suite": "TLS_AES_128_GCM_SHA256",
+  "group": "X25519MLKEM768",
+  "sigalg": "mldsa65",
+  "s_server": [
+    "-groups",
+    "X25519MLKEM768",
+    "-num_tickets",
+    "2",
+    "-max_send_frag",
+    "1024"
+  ],
+  "s_client": [
+    "-groups",
+    "X25519MLKEM768",
+    "-sigalgs",
+    "mldsa65",
+    "-max_send_frag",
+    "1024"
+  ],
+  "sha256": {
+    "client.bin": "c2e838e78bd300cfb7ee5749449eb31d0eda9b78f79003fbc32f77898d2ccddf",
+    "key.pem": "ee72d31c96323d4d9c6e7b3432032f2f8ec75ed24b66e37692b7fb6957325fa7",
+    "keylog.txt": "aee0bcae4c2a6a6f5b1aee62c91e81af80da439643649bb5693fa768e4b989f0",
+    "root.der": "5eb0778b5e8f00f64855bba4d79f5246e938bcc4dd461e67caa4b5a5eb7adba0",
+    "server.bin": "889ef56c0b4f00896034d09c4fb6245fba90fcc44b1472682ca42707275944de"
+  }
+}

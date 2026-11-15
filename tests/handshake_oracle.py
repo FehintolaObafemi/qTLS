@@ -33,6 +33,7 @@ CV_CONTEXT = b"TLS 1.3, server CertificateVerify"
 SCHEMES = {0x0403: "ECDSA-P256-SHA256", 0x0904: "ML-DSA-44", 0x0905: "ML-DSA-65", 0xFE50: "Falcon-512"}
 HANDSHAKE, ALERT, APP_DATA, CCS = 22, 21, 23, 20
 CH, SH, EE, CERT, CV, FIN, NST = 1, 2, 8, 11, 15, 20, 4
+CCS_RECORD = b"\x14\x03\x03\x00\x01\x01"
 
 
 class OracleMismatch(AssertionError):
@@ -161,18 +162,32 @@ class Trace:
         return [self.messages[n] for n in ("EE", "CERT", "CV", "SFIN")]
 
 
-def _read_side(records: list[bytes], first: bytes, then: bytes | None, end_type: int, trace_data: list[bytes], trace_alerts: list[bytes]) -> list[tuple[int, bytes]]:
-    """Decrypt one side's protected records: handshake under ``first`` until ``end_type``, then ``then``."""
+def _read_side(records: list[bytes], first: bytes, then: bytes | None, end_type: int, trace_data: list[bytes], trace_alerts: list[bytes],
+               post: list[bytes] | None = None) -> list[tuple[int, bytes]]:  # fmt: skip
+    """Decrypt one side's protected records: handshake under ``first`` until ``end_type``, then ``then``.
+
+    ``post`` collects NewSessionTickets after Finished (a foreign server sends
+    them); without it any handshake message after Finished is a mismatch.
+    """
     opener, switched = _Opener(first), False
     stream, messages = b"", []
-    for rec in records:
+    for index, rec in enumerate(records):
+        expect(not trace_alerts, f"record {index} follows an alert")
         if rec[0] == CCS:
+            expect(rec == CCS_RECORD, "malformed ChangeCipherSpec")
             continue
         if rec[0] == ALERT:  # a plaintext alert
             trace_alerts.append(rec[5:])
             continue
         inner_type, content = opener.open(rec)
-        if inner_type == HANDSHAKE:
+        if inner_type == HANDSHAKE and switched and post is not None:
+            stream += content
+            parsed = parse_messages(stream)
+            for msg_type, raw in parsed:
+                expect(msg_type == NST, f"post-handshake message {msg_type}")
+                post.append(raw)
+            stream = stream[sum(len(r) for _, r in parsed):]
+        elif inner_type == HANDSHAKE:
             expect(not switched, "handshake message after the side's Finished")
             stream += content
             parsed = parse_messages(stream)
@@ -194,6 +209,7 @@ def _read_side(records: list[bytes], first: bytes, then: bytes | None, end_type:
             trace_alerts.append(content)
         else:
             raise OracleMismatch(f"inner content type {inner_type}")
+    expect(stream == b"", "a handshake message is cut off at the end of the records")
     return messages
 
 
@@ -295,4 +311,77 @@ def observe(
             for label, (random_hex, secret_hex) in logged.items():
                 expect(random_hex == c_random.hex(), "keylog isn't keyed by the client random")
                 expect(bytes.fromhex(secret_hex) == t.secrets[label], f"keylog {label} differs from the oracle")
+    return t
+
+
+# ---- a foreign capture, keyed by its keylog --------------------------------- #
+
+
+@dataclass
+class Capture(Trace):
+    tickets: list[bytes] = field(default_factory=list)
+    client_records: list[bytes] = field(default_factory=list)
+    server_records: list[bytes] = field(default_factory=list)
+
+
+def _plaintext_hello(records: list[bytes], msg_type: int) -> tuple[bytes, list[bytes]]:
+    """Reassemble a hello from leading plaintext handshake records (CCS skipped); return it and the rest."""
+    stream, i = b"", 0
+    while i < len(records) and records[i][0] in (HANDSHAKE, CCS):
+        if records[i][0] == HANDSHAKE:
+            stream += records[i][5:]
+        else:
+            expect(records[i] == CCS_RECORD, "malformed ChangeCipherSpec")
+        i += 1
+    parsed = parse_messages(stream)
+    expect(len(parsed) == 1 and parsed[0][0] == msg_type and len(parsed[0][1]) == len(stream),
+           f"plaintext records don't hold exactly one message {msg_type}")  # fmt: skip
+    return parsed[0][1], records[i:]
+
+
+def observe_capture(client_wire: bytes, server_wire: bytes, keylog: dict[str, bytes], *,
+                    sig_backends: dict[str, str] | None = None) -> Capture:  # fmt: skip
+    """Check a handshake between two other stacks, given its keylog instead of a seed.
+
+    Without the ephemeral keys it can't check the key exchange (P5 rests on
+    the live interop tests). It checks everything the traffic secrets reach:
+    every record decrypts in order under the right key, the message order,
+    CertificateVerify with the leaf's key, and both Finished values.
+    """
+    sig_backends = sig_backends or dict(x509.DEFAULT_BACKENDS)
+    t = Capture()
+    t.client_records, t.server_records = c_records, s_records = split(client_wire), split(server_wire)
+    ch, c_rest = _plaintext_hello(c_records, CH)
+    sh, s_rest = _plaintext_hello(s_records, SH)
+    c_random, _ = client_hello_fields(ch)
+    _, s_ext = server_hello_fields(sh)
+    expect(int.from_bytes(s_ext[0x0033][:2], "big") == GROUP, "server group isn't X25519MLKEM768")
+    expect(set(keylog) == {"CLIENT_HANDSHAKE_TRAFFIC_SECRET", "SERVER_HANDSHAKE_TRAFFIC_SECRET",
+                           "CLIENT_TRAFFIC_SECRET_0", "SERVER_TRAFFIC_SECRET_0", "EXPORTER_SECRET"}, "keylog labels")  # fmt: skip
+    t.secrets = dict(keylog)
+    c_hs, s_hs = keylog["CLIENT_HANDSHAKE_TRAFFIC_SECRET"], keylog["SERVER_HANDSHAKE_TRAFFIC_SECRET"]
+    c_ap, s_ap = keylog["CLIENT_TRAFFIC_SECRET_0"], keylog["SERVER_TRAFFIC_SECRET_0"]
+
+    s_msgs = _read_side(s_rest, s_hs, s_ap, FIN, t.server_data, t.server_alerts, post=t.tickets)
+    expect([m[0] for m in s_msgs] == [EE, CERT, CV, FIN], f"server flight order {[m[0] for m in s_msgs]}")
+    ee, cert, cv, sfin = (m[1] for m in s_msgs)
+    c_msgs = _read_side(c_rest, c_hs, c_ap, FIN, t.client_data, t.client_alerts)
+    expect([m[0] for m in c_msgs] == [FIN], f"client sent handshake messages {[m[0] for m in c_msgs]}")
+    cfin = c_msgs[0][1]
+    t.messages.update(CH=ch, SH=sh, EE=ee, CERT=cert, CV=cv, SFIN=sfin, CFIN=cfin)
+
+    body = cert[4:]
+    pos = 1 + body[0] + 3
+    leaf_der = body[pos + 3 : pos + 3 + int.from_bytes(body[pos : pos + 3], "big")]
+    spki_oid, leaf_key = x509.parse_spki(x509.parse(leaf_der).spki_raw)
+    scheme = int.from_bytes(cv[4:6], "big")
+    t.leaf_alg = alg = SCHEMES[scheme]
+    expect(x509.BY_NAME[alg].spki_oid == spki_oid, "CertificateVerify scheme doesn't fit the leaf key")
+    signature = cv[8 : 8 + int.from_bytes(cv[6:8], "big")]
+    try:
+        crypto.sig_verify(alg, leaf_key, b"\x20" * 64 + CV_CONTEXT + b"\x00" + h(ch + sh + ee + cert), signature, sig_backends[alg])
+    except crypto.InvalidSignature:
+        raise OracleMismatch("CertificateVerify doesn't verify") from None
+    expect(sfin[4:] == crypto.hmac_sha256(expand_label(s_hs, b"finished", b"", 32), h(ch + sh + ee + cert + cv)), "server Finished")
+    expect(cfin[4:] == crypto.hmac_sha256(expand_label(c_hs, b"finished", b"", 32), h(ch + sh + ee + cert + cv + sfin)), "client Finished")
     return t

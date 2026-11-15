@@ -193,6 +193,8 @@ def _parse_spki(spki: der.Node) -> tuple[str, bytes | None, bytes, bytes]:
             raise _bad(f"{alg.name} key parameters must be absent", "spki-params")
         if len(key) != expected:
             raise _bad(f"{alg.name} key is {len(key)} bytes, expected {expected}", "key-length")
+        if alg.kind == "kem" and not crypto.kem_public_key_valid(alg.name, key):
+            raise _bad(f"{alg.name} key fails the FIPS 203 modulus check", "kem-key")
     return oid, params, key, parts[0].raw
 
 

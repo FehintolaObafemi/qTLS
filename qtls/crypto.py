@@ -215,6 +215,52 @@ _OPENSSL_MLDSA = {
     "ML-DSA-65": (mldsa.MLDSA65PrivateKey, mldsa.MLDSA65PublicKey),
 }
 _ECDSA = "ECDSA-P256-SHA256"
+_FALCON = "Falcon-512"
+_FALCON_HEADER = 0x30 + 9  # compressed encoding, logn = 9 (Falcon round-3 spec §3.11.3)
+_FALCON_NONCE_LEN = 40
+_FALCON_N = 512
+
+
+def falcon_canonical(sig: bytes) -> bool:
+    """True if ``sig`` is a Falcon-512 signature in its one canonical compact encoding.
+
+    liboqs also accepts a compact signature zero-padded to exactly 666 bytes
+    (the Falcon-padded length), so one signature would have two encodings,
+    and so would any certificate it signs (specs.md D28). This follows the
+    reference ``comp_decode``: the header byte, the nonce, then exactly 512
+    coefficients (sign bit, 7 low bits, unary high part; |s| <= 2047; no -0)
+    that end in the last byte, with that byte's unused bits zero.
+    """
+    if len(sig) <= 1 + _FALCON_NONCE_LEN or sig[0] != _FALCON_HEADER:
+        return False
+    data = sig[1 + _FALCON_NONCE_LEN:]
+    total_bits = 8 * len(data)
+    pos = 0
+
+    def bit() -> int:
+        nonlocal pos
+        if pos >= total_bits:
+            raise IndexError
+        b = (data[pos >> 3] >> (7 - (pos & 7))) & 1
+        pos += 1
+        return b
+
+    try:
+        for _ in range(_FALCON_N):
+            sign = bit()
+            m = 0
+            for _ in range(7):
+                m = (m << 1) | bit()
+            while not bit():
+                m += 128
+                if m > 2047:
+                    return False
+            if sign and m == 0:
+                return False
+    except IndexError:
+        return False
+    # The encoding must end in the last byte, and the rest of that byte must be zero.
+    return total_bits - pos < 8 and (data[-1] & ((1 << (total_bits - pos)) - 1)) == 0
 _LIBOQS_KEMS = {"ML-KEM-512", "ML-KEM-768"}
 _LIBOQS_SIGS = {"ML-DSA-44", "ML-DSA-65", "Falcon-512"}
 
@@ -731,6 +777,30 @@ class SigPrivateKey:
         return self._handle.export_secret_key()
 
 
+ML_KEM_Q = 3329
+
+
+def kem_public_key_valid(alg: str, public_key: bytes) -> bool:
+    """FIPS 203 §7.2 encapsulation-key check: the right length, every 12-bit coefficient < q.
+
+    Checked when a certificate is parsed (as ``ec_point_valid`` is for ECDSA),
+    so a KEM leaf with a key no backend would encapsulate to is a bad
+    certificate, not a later failure (found by the 2e OpenSSL differential).
+    """
+    params = KEMS.get(alg)
+    if params is None or not alg.startswith("ML-KEM-"):
+        raise UnknownAlgorithm(alg)
+    data = _check_bytes("public key", public_key)
+    if len(data) != params.public_key_len:
+        return False
+    t = data[: params.public_key_len - 32]  # ByteEncode12 of the k*256 coefficients, then rho
+    for i in range(0, len(t), 3):
+        b0, b1, b2 = t[i], t[i + 1], t[i + 2]
+        if (b0 | (b1 & 0x0F) << 8) >= ML_KEM_Q or (b1 >> 4 | b2 << 4) >= ML_KEM_Q:
+            return False
+    return True
+
+
 _P256_ORDER = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
 P256_ORDER = _P256_ORDER
 
@@ -818,6 +888,8 @@ def _verify(
         if len(sig) != params.max_signature_len:
             raise InvalidSignature
     elif not 0 < len(sig) <= params.max_signature_len:
+        raise InvalidSignature
+    if alg == _FALCON and not falcon_canonical(sig):
         raise InvalidSignature
     if alg == _ECDSA:
         try:

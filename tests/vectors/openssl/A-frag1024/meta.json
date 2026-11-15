@@ -1,0 +1,33 @@
+{
+  "openssl": "OpenSSL 3.6.3 9 Jun 2026 (Library: OpenSSL 3.6.3 9 Jun 2026)",
+  "case": "A-frag1024",
+  "config": "A",
+  "now": "2026-01-31T00:00:00+00:00",
+  "server_name": "qtls.test",
+  "suite": "TLS_AES_128_GCM_SHA256",
+  "group": "X25519MLKEM768",
+  "sigalg": "ecdsa_secp256r1_sha256",
+  "s_server": [
+    "-groups",
+    "X25519MLKEM768",
+    "-num_tickets",
+    "2",
+    "-max_send_frag",
+    "1024"
+  ],
+  "s_client": [
+    "-groups",
+    "X25519MLKEM768",
+    "-sigalgs",
+    "ecdsa_secp256r1_sha256",
+    "-max_send_frag",
+    "1024"
+  ],
+  "sha256": {
+    "client.bin": "d551aa6314f1c1906515ac08e119b4e17d2abea26938133786f6e0846552329d",
+    "key.pem": "a07e294bab0f36769929e9a5cea6ef264ae11bbdb420390e3e56e55a54ae9bdf",
+    "keylog.txt": "b825cda469a00ad9a7cbe7d6cbb0196c47a69cf6c1c9fa005cfe0f3fb8d43e0f",
+    "root.der": "519c413b44eaa4d749698482bf10ed90801005da88adce762f12dfdc6bed456b",
+    "server.bin": "1e48585fd82c8f5f1a18f8340d85d47b3d76b0565babb121a98cfcea94214852"
+  }
+}

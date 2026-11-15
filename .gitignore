@@ -7,8 +7,9 @@ __pycache__/
 build/
 dist/
 
-# Locally built liboqs (scripts/build_liboqs.sh)
+# Locally built liboqs and OpenSSL (scripts/build_liboqs.sh, scripts/build_openssl.sh)
 .oqs/
+.openssl/
 
 # Notebooks
 .ipynb_checkpoints/

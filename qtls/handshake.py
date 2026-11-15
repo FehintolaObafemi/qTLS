@@ -179,15 +179,60 @@ class SeededRandomness:
 # --------------------------------------------------------------------------- #
 
 
+class CertificateVerifier(Protocol):
+    """Validates the server's certificate_list and returns its leaf (specs.md D30).
+
+    The state machine keeps the message checks (context, empty list, entry
+    extensions), the transcript and the state; a verifier owns only its trust
+    policy (anchors, time; MTC landmarks in Phase 3). It is told what the
+    handshake needs and must enforce it, and the state machine re-checks the
+    returned leaf anyway (P8). It reports a bad chain by raising AlertError;
+    anything else is a local bug (internal_error, re-raised).
+    """
+
+    def verify(
+        self,
+        cert_data: tuple[bytes, ...],
+        *,
+        server_name: str,
+        accepted: frozenset[int],
+        expected_kind: x509.Kind,
+        backends: Mapping[str, crypto.Backend],
+    ) -> x509.VerifiedLeaf: ...
+
+
+@dataclass(frozen=True)
+class X509Verifier:
+    """The default verifier: X.509 path validation to a trust anchor (D24)."""
+
+    anchors: tuple[x509.TrustAnchor, ...]
+    now: dt.datetime  # injected; the clock is never read
+
+    def verify(
+        self,
+        cert_data: tuple[bytes, ...],
+        *,
+        server_name: str,
+        accepted: frozenset[int],
+        expected_kind: x509.Kind,
+        backends: Mapping[str, crypto.Backend],
+    ) -> x509.VerifiedLeaf:
+        return x509.verify_chain(
+            list(cert_data), self.anchors, server_name=server_name, now=self.now,
+            accepted=accepted, expected_kind=expected_kind, backends=backends,
+        )  # fmt: skip
+
+
 @dataclass(frozen=True)
 class ClientConfig:
-    anchors: tuple[x509.TrustAnchor, ...]
+    anchors: tuple[x509.TrustAnchor, ...]  # for the default X509Verifier
     signature_algorithms: tuple[int, ...]  # CertificateVerify schemes offered
     now: dt.datetime  # injected; the clock is never read
     server_name: str = "qtls.test"
     signature_algorithms_cert: tuple[int, ...] | None = None  # sent only when set
     randomness: Randomness = field(default_factory=SystemRandomness)
     backends: Mapping[str, crypto.Backend] = field(default_factory=lambda: DEFAULT_BACKENDS)
+    certificate_verifier: CertificateVerifier | None = None  # None: X509Verifier(anchors, now)
 
 
 @dataclass(frozen=True)
@@ -498,7 +543,7 @@ class Client(Connection):
     def __init__(self, config: ClientConfig) -> None:
         if not config.signature_algorithms:
             raise CodecUsageError("offer at least one signature algorithm")
-        if not config.anchors:
+        if config.certificate_verifier is None and not config.anchors:
             raise CodecUsageError("a client needs at least one trust anchor")
         schemes = set(config.signature_algorithms) | set(config.signature_algorithms_cert or ())
         _check_backends(config.backends, [MLKEM] + [_scheme_alg(s) for s in sorted(schemes)])
@@ -508,6 +553,7 @@ class Client(Connection):
         self._offered: set[int] = set()
         self._c_hs = self._s_hs = b""
         self.leaf: x509.VerifiedLeaf | None = None
+        self._verifier = config.certificate_verifier or X509Verifier(config.anchors, config.now)
 
     def start(self) -> None:
         if self.state is not State.START:
@@ -606,10 +652,20 @@ class Client(Connection):
                 self._reject_extension(ext.ext_type, "CertificateEntry")
         cfg = self.config
         accepted = cfg.signature_algorithms_cert if cfg.signature_algorithms_cert is not None else cfg.signature_algorithms
-        self.leaf = x509.verify_chain(
-            [e.cert_data for e in cert.certificate_list], cfg.anchors, server_name=cfg.server_name,
-            now=cfg.now, accepted=frozenset(accepted), expected_kind="sig", backends=self._backends,
+        leaf = self._verifier.verify(
+            tuple(e.cert_data for e in cert.certificate_list), server_name=cfg.server_name,
+            accepted=frozenset(accepted), expected_kind="sig", backends=self._backends,
         )  # fmt: skip
+        # Postconditions, whatever the verifier: the leaf is the certificate the
+        # server sent, a signature leaf (P8), and a key a scheme we offered can
+        # use. CertificateVerify then uses this leaf.
+        if leaf.certificate.raw != cert.certificate_list[0].cert_data:
+            raise _fail(Alert.bad_certificate, "the verifier's leaf isn't the certificate the server sent", "leaf-mismatch")
+        if leaf.kind != "sig":
+            raise _fail(Alert.unsupported_certificate, f"{leaf.alg} leaf under signature authentication (P8)", "leaf-kind")
+        if not set(x509.BY_NAME[leaf.alg].codepoints) & set(cfg.signature_algorithms):
+            raise _fail(Alert.unsupported_certificate, f"no offered scheme fits the {leaf.alg} leaf", "leaf-alg")
+        self.leaf = leaf
         self._transcript.add(raw.raw)
         self.state = State.WAIT_CV
 
