@@ -1,0 +1,50 @@
+[
+ {
+  "landmark": 1,
+  "tree_size": 34,
+  "subtrees": [
+   {
+    "start": 0,
+    "end": 32,
+    "hash": "h8Kw2BqVjlYaB3esivVVSwmRQfwVIb6E71DEeK3YQwc="
+   },
+   {
+    "start": 32,
+    "end": 34,
+    "hash": "aQ7rLTwjwLuYX6KLJpERloBQERVSWgFUxcOiSIwvNPg="
+   }
+  ]
+ },
+ {
+  "landmark": 2,
+  "tree_size": 2036,
+  "subtrees": [
+   {
+    "start": 0,
+    "end": 1024,
+    "hash": "blLA+9WDzuzi1pEWyHy06XW17rgrWhiKbDaV7WxXzpw="
+   },
+   {
+    "start": 1024,
+    "end": 2036,
+    "hash": "xc/+sJddkjD4FL8rGdrkbMItGKsWrhfhIRp8vYprdiI="
+   }
+  ]
+ },
+ {
+  "landmark": 3,
+  "tree_size": 2122,
+  "subtrees": [
+   {
+    "start": 2032,
+    "end": 2048,
+    "hash": "H89Du5MigjGfW+Dd+K2HSnMi5S5JPBeLAf+IoZHO8jY="
+   },
+   {
+    "start": 2048,
+    "end": 2122,
+    "hash": "NI0xeg7ALqrMDJYtMMIcnU6b5E4dFYdWd6dI8yH2wh0="
+   }
+  ]
+ }
+]

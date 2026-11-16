@@ -189,3 +189,46 @@ def test_extract_mtc_vectors_writes_nothing_when_parsing_fails(tmp_path: Path, m
     with pytest.raises(ValueError, match="not found"):
         extract.main(mtc, tai, tmp_path)
     assert not (tmp_path / "mtc").exists() and not (tmp_path / "tai").exists()
+
+
+def test_mtc_demo_reads_landmark_output() -> None:
+    demo = _load("mtc_demo")
+    out = demo.landmarks("Wrote certificate...\nLandmark 1 at tree size 34:\n"
+                         "  Landmark subtree [0, 32) with hash AAAA\n  Landmark subtree [32, 34) with hash BBBB\n"
+                         "Landmark 2 at tree size 40:\n  Landmark subtree [32, 40) with hash CCCC\n")  # fmt: skip
+    assert out == [
+        {"landmark": 1, "tree_size": 34, "subtrees": [{"start": 0, "end": 32, "hash": "AAAA"}, {"start": 32, "end": 34, "hash": "BBBB"}]},
+        {"landmark": 2, "tree_size": 40, "subtrees": [{"start": 32, "end": 40, "hash": "CCCC"}]},
+    ]
+
+
+def test_mtc_demo_needs_both_known_answers(tmp_path: Path) -> None:
+    demo = _load("mtc_demo")
+    go = tmp_path / "demo" / "encode_test.go"
+    go.parent.mkdir()
+    case = '\n\t\t{\n\t\t\tversion: VersionPlants07,\n\t\t\texpectedTBSHex: "30",\n\t\t\texpectedLogEntryHex: "00" + "01",\n\t\t},'
+    go.write_text("func TestMarshalTBSCertificate(t *testing.T) {" + case + case + "\n}\nfunc TestCreateCACertificate(")
+    assert demo.wg_kats(tmp_path) == [{"tbs": "30", "log_entry": "0001"}] * 2
+    go.write_text("func TestMarshalTBSCertificate(t *testing.T) {" + case + "\n}\nfunc TestCreateCACertificate(")
+    with pytest.raises(RuntimeError, match="expected 2"):
+        demo.wg_kats(tmp_path)
+
+
+def _stub(tmp_path: Path, stdout: str, code: int) -> Path:
+    stub = tmp_path / "demo"
+    stub.write_text(f"#!/bin/sh\ncat <<'EOF'\n{stdout}\nEOF\nexit {code}\n")
+    stub.chmod(0o755)
+    return stub
+
+
+def test_mtc_demo_verdict_is_strict(tmp_path: Path) -> None:
+    """Only a verdict line or Go failing to parse *this* certificate is a verdict; any other demo
+    failure (a bad policy, a bad CA certificate) stops the run instead of being pinned as the oracle."""
+    demo = _load("mtc_demo")
+    cert, ca = tmp_path / "cert_1_0.pem", tmp_path / "ca.pem"
+    assert demo.verdict(_stub(tmp_path, f"{cert}: OK", 0), ca, None, cert) == "OK"
+    unparsable = f'Error verifying certificates: failed to parse certificate from "{cert}": x509: bad thing'
+    assert demo.verdict(_stub(tmp_path, unparsable, 1), ca, None, cert) == "unparsable: x509: bad thing"
+    for text in ("Error verifying certificates: policy.txt:1: invalid base64 public key", "", f"{cert}: OK\n{cert}: OK"):
+        with pytest.raises(RuntimeError, match="expected one verdict"):
+            demo.verdict(_stub(tmp_path, text, 1), ca, None, cert)

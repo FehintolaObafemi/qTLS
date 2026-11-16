@@ -1024,3 +1024,55 @@ def test_falcon_certificate_with_the_padded_signature_encoding_is_rejected() -> 
     assert len(signature) < 666
     padded = der.seq(tbs.raw, alg.raw, der.bit_string(signature + bytes(666 - len(signature))))
     fails(Alert.bad_certificate, "signature", lambda: verify([padded, chain.cert_data[1]], [chain.anchor]))
+
+
+# --------------------------------------------------------------------------- #
+# Trust anchor ID names (D24 amendment for MTC; draft-ietf-tls-trust-anchor-ids-07 §4.1)
+# --------------------------------------------------------------------------- #
+
+
+def _tai_name(value: bytes, *, extra_rdn: bool = False, extra_attr: bool = False) -> bytes:
+    attr = der.seq(der.oid(x509.TRUST_ANCHOR_ID_ATTRIBUTE), value)
+    attrs = [attr, der.seq(der.oid(x509.COMMON_NAME), der.utf8_string("x"))] if extra_attr else [attr]
+    rdns = [der.set_of(*sorted(attrs))]
+    if extra_rdn:
+        rdns.append(der.set_of(der.seq(der.oid(x509.COMMON_NAME), der.utf8_string("x"))))
+    return der.seq(*rdns)
+
+
+def test_trust_anchor_id_names_parse() -> None:
+    name = _tai_name(bytes.fromhex("0d0481fd5901"))
+    x509._check_name(name)
+    assert x509.trust_anchor_id_of(name) == bytes.fromhex("81fd5901")
+    assert x509.trust_anchor_id_of(x509.name("qTLS root")) is None
+    x509._check_name(_tai_name(der.relative_oid(b"\x01" * 32)))
+
+
+@pytest.mark.parametrize(
+    ("name", "reason"),
+    [
+        (_tai_name(der.tlv(der.RELATIVE_OID, b"\x01" * 33)), "name-trust-anchor-id"),
+        (_tai_name(der.relative_oid(b"\x01"), extra_rdn=True), "name-trust-anchor-id"),
+        (_tai_name(der.relative_oid(b"\x01"), extra_attr=True), "name-trust-anchor-id"),
+        (_tai_name(der.tlv(der.RELATIVE_OID, b"\x80\x01")), "der"),
+        (_tai_name(der.tlv(der.RELATIVE_OID, b"")), "der"),
+        (_tai_name(der.utf8_string("32473.1")), "der"),
+    ],
+    ids=["33-bytes", "second-rdn", "second-attribute", "non-minimal", "empty", "utf8-value"],
+)
+def test_malformed_trust_anchor_id_names_are_bad_certificates(name: bytes, reason: str) -> None:
+    with pytest.raises((AlertError, der.DerError)) as info:
+        x509._check_name(name)
+    got = info.value.reason if isinstance(info.value, AlertError) else "der"  # parse() maps DerError to "der"
+    assert got == reason
+
+
+def test_other_attributes_must_still_be_strings() -> None:
+    name = der.seq(der.set_of(der.seq(der.oid(x509.COMMON_NAME), der.relative_oid(b"\x01"))))
+    with pytest.raises(der.DerError):
+        x509._check_name(name)
+
+
+def test_trust_anchor_id_of_three_part_attribute_is_none() -> None:
+    attr = der.seq(der.oid(x509.TRUST_ANCHOR_ID_ATTRIBUTE), der.relative_oid(bytes.fromhex("81fd5909")), der.null())
+    assert x509.trust_anchor_id_of(der.seq(der.set_of(attr))) is None

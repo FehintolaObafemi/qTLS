@@ -220,7 +220,7 @@ Each phase has an exit criterion. Don't start the next phase until it's met. The
   - RELATIVE-OID in `qtls/der.py`.
   - The vendored vectors: MTC -08 Appendix C, the C.2 files from the WG repository's -08 tag, and trust-anchor-ids Appendix B.
   - D15 and D30 decided from the trust-anchor-ids draft.
-- **3b1: MTC certificates.**
+- **3b1 (done): MTC certificates.**
   - *First step:* build the WG's Go demo at the -08 tag (its go.mod asks for Go 1.27) and check it reproduces C.1. This is the independent oracle for the rest of 3b.
   - Codecs: MTCLogEntry, TBSCertificateLogEntry, MTCProof (uint48, cosigner order).
   - Standalone and landmark-relative certificate construction.
