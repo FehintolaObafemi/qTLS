@@ -292,7 +292,8 @@ def test_ci_needs_the_openssl_tests_to_have_run(
 
 
 def test_only_crypto_module_imports_crypto_libraries() -> None:
-    pattern = re.compile(r"^\s*(import|from)\s+(oqs|cryptography)\b", re.M)
+    # hashlib too: a hash outside crypto.py would go uncounted (Phase 5, specs.md D31).
+    pattern = re.compile(r"^\s*(import|from)\s+(oqs|cryptography|hashlib)\b", re.M)
     offenders = [
         str(p.relative_to(ROOT))
         for p in (ROOT / "qtls").rglob("*.py")
@@ -305,7 +306,7 @@ def test_vendored_vectors_match_recorded_hashes() -> None:
     """Every file under tests/vectors is pinned by SHA-256 in its directory's SOURCE."""
     vectors = ROOT / "tests" / "vectors"
     dirs = sorted(d for d in vectors.iterdir() if d.is_dir())
-    assert {d.name for d in dirs} >= {"acvp", "liboqs", "rfc7748", "rfc8448"}
+    assert {d.name for d in dirs} >= {"acvp", "liboqs", "mtc", "openssl", "rfc7748", "rfc8448", "trust-anchor-ids"}
     for d in dirs:
         source = d / "SOURCE"
         assert source.is_file(), f"{d.name} has no SOURCE file"

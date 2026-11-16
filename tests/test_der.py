@@ -118,6 +118,55 @@ def test_invalid_oids_cannot_be_encoded() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# RELATIVE-OID (X.690 §8.20; trust anchor IDs in names, specs.md D32)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    ("contents", "raw"),
+    [("81fd5901", "0d0481fd5901"), ("00", "0d0100"), ("7f", "0d017f"), ("8100", "0d028100"),
+     ("81fd5982808080808080808003", "0d0d81fd5982808080808080808003")],  # fmt: skip
+    ids=["32473.1", "0", "127", "128", "32473.2^64+3"],
+)
+def test_relative_oid_both_ways(contents: str, raw: str) -> None:
+    """The first is draft-ietf-tls-trust-anchor-ids-07 §4's example; arcs aren't size-limited here."""
+    assert der.relative_oid(bytes.fromhex(contents)).hex() == raw
+    assert der.parse(bytes.fromhex(raw)).as_relative_oid().hex() == contents
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["0d00", "0d0180", "0d028001", "0d020181", "0d0181", "0d03018001", "2d00"],
+    ids=["empty", "lone-0x80", "0x80-lead", "truncated", "truncated-one", "0x80-lead-second-arc", "constructed"],
+)
+def test_bad_relative_oids_are_rejected(raw: str) -> None:
+    with pytest.raises(der.DerError):
+        der.parse(bytes.fromhex(raw)).as_relative_oid()
+
+
+def test_constructed_relative_oid_is_rejected_by_the_parser() -> None:
+    """X.690 §8.20: primitive only, refused while parsing, even nested where nobody reads it as one."""
+    with pytest.raises(der.DerError, match="primitive/constructed"):
+        der.parse(bytes.fromhex("2d00"))
+    with pytest.raises(der.DerError, match="primitive/constructed"):
+        der.parse(bytes.fromhex("30022d00")).children()
+
+
+def test_relative_oid_is_not_an_oid() -> None:
+    """The tags differ, so one can't stand in for the other (0x06 vs 0x0D)."""
+    with pytest.raises(der.DerError):
+        der.parse(bytes.fromhex("0d0481fd5901")).as_oid()
+    with pytest.raises(der.DerError):
+        der.parse(der.oid("1.3.6.1.4.1.32473.1")).as_relative_oid()
+
+
+@pytest.mark.parametrize("contents", ["", "80", "8001", "0181"], ids=["empty", "lone-0x80", "0x80-lead", "truncated"])
+def test_invalid_relative_oids_cannot_be_encoded(contents: str) -> None:
+    with pytest.raises(CodecUsageError):
+        der.relative_oid(bytes.fromhex(contents))
+
+
+# --------------------------------------------------------------------------- #
 # BIT STRING, BOOLEAN, NULL, strings
 # --------------------------------------------------------------------------- #
 

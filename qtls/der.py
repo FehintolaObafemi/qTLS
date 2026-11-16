@@ -18,8 +18,9 @@ from qtls.alerts import CodecUsageError
 BOOLEAN, INTEGER, BIT_STRING, OCTET_STRING, NULL, OID = 0x01, 0x02, 0x03, 0x04, 0x05, 0x06
 UTF8_STRING, SEQUENCE, SET, PRINTABLE_STRING, IA5_STRING = 0x0C, 0x30, 0x31, 0x13, 0x16
 UTC_TIME, GENERALIZED_TIME = 0x17, 0x18
+RELATIVE_OID = 0x0D  # X.680 §33; trust anchor IDs in names (draft-ietf-tls-trust-anchor-ids-07 §4.1)
 
-_UNIVERSAL_PRIMITIVE = {BOOLEAN, INTEGER, BIT_STRING, OCTET_STRING, NULL, OID,
+_UNIVERSAL_PRIMITIVE = {BOOLEAN, INTEGER, BIT_STRING, OCTET_STRING, NULL, OID, RELATIVE_OID,
                         UTF8_STRING, PRINTABLE_STRING, IA5_STRING, UTC_TIME, GENERALIZED_TIME}  # fmt: skip
 _UNIVERSAL_CONSTRUCTED = {SEQUENCE, SET}
 MAX_ARC_BYTES = 10  # 70 bits: every real OID arc fits
@@ -104,6 +105,16 @@ class Node:
         first = arcs[0]
         head = [0, first] if first < 40 else [1, first - 40] if first < 80 else [2, first - 80]
         return ".".join(map(str, head + arcs[1:]))
+
+    def as_relative_oid(self) -> bytes:
+        """A RELATIVE-OID's contents octets: non-empty, minimal arcs, none truncated (X.690 §8.20).
+
+        The arcs aren't converted to integers, so their size is unbounded here;
+        callers bound the whole value (a trust anchor ID is at most 32 bytes).
+        """
+        c = self.expect(RELATIVE_OID).contents
+        check_relative_oid(c, DerError)
+        return c
 
     def as_bit_string(self) -> bytes:
         c = self.expect(BIT_STRING).contents
@@ -206,6 +217,19 @@ def _read(data: bytes, pos: int) -> tuple[Node, int]:
     return node, pos + length
 
 
+def check_relative_oid(contents: bytes, error: type[Exception]) -> None:
+    """Raise ``error`` unless ``contents`` are a canonical RELATIVE-OID body (X.690 §8.20.2)."""
+    if not contents:
+        raise error("empty RELATIVE-OID")
+    if contents[-1] & 0x80:
+        raise error("truncated RELATIVE-OID arc")
+    start = True
+    for byte in contents:
+        if start and byte == 0x80:
+            raise error("non-minimal RELATIVE-OID arc")
+        start = not byte & 0x80
+
+
 def _check_set_order(items: list[Node]) -> None:
     raws = [n.raw for n in items]
     if raws != sorted(raws):
@@ -269,6 +293,12 @@ def oid(dotted: str) -> bytes:
             arc >>= 7
         out += bytes(reversed(chunk))
     return tlv(OID, out)
+
+
+def relative_oid(contents: bytes) -> bytes:
+    """A RELATIVE-OID TLV from its canonical contents octets."""
+    check_relative_oid(contents, CodecUsageError)
+    return tlv(RELATIVE_OID, contents)
 
 
 def bit_string(data: bytes) -> bytes:
