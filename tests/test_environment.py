@@ -269,7 +269,8 @@ def test_no_skip_guard(
     ))
     pytester.makepyfile(body)
     monkeypatch.setenv("QTLS_NO_SKIPS", no_skips)
-    monkeypatch.delenv("QTLS_MIN_OPENSSL_TESTS", raising=False)  # set in CI; this run has no OpenSSL tests
+    for floor in ("QTLS_MIN_OPENSSL_TESTS", "QTLS_MIN_GO_TESTS"):
+        monkeypatch.delenv(floor, raising=False)  # set in CI; this run has no OpenSSL or Go tests
     assert pytester.runpytest_subprocess("-p", "no:cacheprovider").ret == expected
 
 
@@ -288,6 +289,38 @@ def test_ci_needs_the_openssl_tests_to_have_run(
     )
     monkeypatch.setenv("QTLS_NO_SKIPS", "1")
     monkeypatch.setenv("QTLS_MIN_OPENSSL_TESTS", "2")
+    monkeypatch.delenv("QTLS_MIN_GO_TESTS", raising=False)
+    assert pytester.runpytest_subprocess("-p", "no:cacheprovider", *args).ret == expected
+
+
+@pytest.mark.parametrize(
+    ("args", "body", "expected"),
+    [
+        ((), "", 0),
+        (("-m", "not go"), "", 1),
+        (("-k", "not test_b"), "", 1),
+        (("-k", "nothing_matches"), "", 1),
+        (("other_test.py",), "", 1),  # uncollected: another file runs, the go suite doesn't
+        ((), "import pytest\npytestmark = pytest.mark.skip('no QTLS_GO_DEMO')\n", 1),  # skipped, all of it
+    ],
+    ids=["ran", "deselected", "one-deselected", "none-collected", "uncollected", "skipped"],
+)
+def test_ci_needs_the_go_tests_to_have_run(
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch, args: tuple[str, ...], body: str, expected: int
+) -> None:
+    """The live Go differential is gated like the OpenSSL suite: QTLS_MIN_GO_TESTS (specs.md D34)."""
+    pytester.makeconftest((ROOT / "tests" / "conftest.py").read_text().replace('pytest_plugins = ["pytester"]', ""))
+    pytester.makeini("[pytest]\nmarkers =\n    go: x\n    openssl: x\n")
+    pytester.makepyfile(
+        test_go_suite=body
+        + "import pytest\n@pytest.mark.go\ndef test_a():\n    pass\n@pytest.mark.go\ndef test_b():\n    pass\n"
+        # A parametrize id or test name with "go" in it is a keyword, not the mark: it mustn't count.
+        "@pytest.mark.parametrize('lang', ['go', 'python'])\ndef test_go_named(lang):\n    pass\n",
+        other_test="def test_other():\n    pass\n",
+    )
+    monkeypatch.setenv("QTLS_NO_SKIPS", "1")
+    monkeypatch.setenv("QTLS_MIN_GO_TESTS", "2")
+    monkeypatch.delenv("QTLS_MIN_OPENSSL_TESTS", raising=False)
     assert pytester.runpytest_subprocess("-p", "no:cacheprovider", *args).ret == expected
 
 
@@ -317,6 +350,31 @@ def test_vendored_vectors_match_recorded_hashes() -> None:
             assert hashlib.sha256((d / name).read_bytes()).hexdigest() == digest, f"{d.name}/{name}"
 
 
+def test_ci_go_floor_equals_the_collected_go_tests() -> None:
+    """Adding a go test must raise CI's QTLS_MIN_GO_TESTS too, or deselecting it would go unnoticed."""
+    floor = re.search(r'QTLS_MIN_GO_TESTS: "(\d+)"', (ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    assert floor is not None
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-m", "go", "-p", "no:cacheprovider", "tests"],
+        cwd=ROOT, capture_output=True, text=True, check=True,
+        env={k: v for k, v in os.environ.items() if k not in ("QTLS_NO_SKIPS", "QTLS_MIN_OPENSSL_TESTS", "QTLS_MIN_GO_TESTS")},
+    )  # fmt: skip
+    collected = [line for line in result.stdout.splitlines() if "::" in line]
+    assert int(floor[1]) == len(collected)
+
+
+def test_ci_runs_the_go_differential() -> None:
+    """CI installs the pinned Go, builds the pinned demo, points the go tests at it in both matrix legs
+    (job-level env), never lets Go fetch another toolchain, and uploads a failed differential."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    env = ci[ci.index("    env:\n"):ci.index("    steps:\n")]
+    assert "QTLS_GO_DEMO: ${{ github.workspace }}/.mtc-demo/demo" in env and "GOTOOLCHAIN: local" in env
+    assert "run: scripts/install_go.sh" in ci and "run: python scripts/mtc_demo.py --build-only" in ci
+    assert ci.index("scripts/install_go.sh") < ci.index("--build-only") < ci.index("run: python -m pytest")
+    upload = ci[ci.index("actions/upload-artifact"):]
+    assert "path: .mtc-demo/failed/" in upload and "if: failure()" in ci[ci.index("Upload the failed MTC differential"):]
+
+
 def test_ci_openssl_floor_equals_the_collected_openssl_tests() -> None:
     """Adding an OpenSSL test must raise CI's floor too, or deselecting it would go unnoticed."""
     floor = re.search(r'QTLS_MIN_OPENSSL_TESTS: "(\d+)"', (ROOT / ".github" / "workflows" / "ci.yml").read_text())
@@ -324,7 +382,7 @@ def test_ci_openssl_floor_equals_the_collected_openssl_tests() -> None:
     result = subprocess.run(
         [sys.executable, "-m", "pytest", "--collect-only", "-q", "-m", "openssl", "-p", "no:cacheprovider", "tests"],
         cwd=ROOT, capture_output=True, text=True, check=True,
-        env={k: v for k, v in os.environ.items() if k not in ("QTLS_NO_SKIPS", "QTLS_MIN_OPENSSL_TESTS")},  # collection only
+        env={k: v for k, v in os.environ.items() if k not in ("QTLS_NO_SKIPS", "QTLS_MIN_OPENSSL_TESTS", "QTLS_MIN_GO_TESTS")},
     )  # fmt: skip
     collected = [line for line in result.stdout.splitlines() if "::" in line]
     assert int(floor[1]) == len(collected)
