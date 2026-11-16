@@ -64,6 +64,7 @@ SCT_LIST = "1.3.6.1.4.1.11129.2.4.2"
 _UNDERSTOOD = {BASIC_CONSTRAINTS, KEY_USAGE, SUBJECT_ALT_NAME, SUBJECT_KEY_ID, AUTHORITY_KEY_ID, SCT_LIST}
 
 COMMON_NAME = "2.5.4.3"
+TRUST_ANCHOR_ID_ATTRIBUTE = "1.3.6.1.5.5.7.25.3"  # id-rdna-trustAnchorID (draft-ietf-tls-trust-anchor-ids-07 §4.1)
 DIGITAL_SIGNATURE, KEY_ENCIPHERMENT, KEY_CERT_SIGN, CRL_SIGN = 0, 2, 5, 6
 
 
@@ -158,6 +159,9 @@ def _common_name(name_raw: bytes) -> str | None:
 
 
 def _check_name(name_raw: bytes) -> None:
+    """Every attribute value is a string, except a trust anchor ID name (D24, TAI §4.1):
+    exactly one RDN with exactly one ``id-rdna-trustAnchorID`` whose value is a RELATIVE-OID of
+    at most 32 bytes. That's how MTC names a CA (MTC -08 §5.1, §6.2)."""
     rdns = der.parse(name_raw).expect(der.SEQUENCE).children()
     if not rdns:
         raise _bad("empty Name", "name-empty")
@@ -169,8 +173,27 @@ def _check_name(name_raw: bytes) -> None:
             parts = attr.expect(der.SEQUENCE).children()
             if len(parts) != 2:
                 raise der.DerError("bad AttributeTypeAndValue")
-            parts[0].as_oid()
-            parts[1].as_str()
+            if parts[0].as_oid() != TRUST_ANCHOR_ID_ATTRIBUTE:
+                parts[1].as_str()
+                continue
+            if len(rdns) != 1 or len(attrs) != 1:
+                raise _bad("a trust anchor ID name has one RDN with one attribute", "name-trust-anchor-id")
+            if len(parts[1].as_relative_oid()) > 32:
+                raise _bad("a trust anchor ID is at most 32 bytes", "name-trust-anchor-id")
+
+
+def trust_anchor_id_of(name_raw: bytes) -> bytes | None:
+    """The trust anchor ID bytes of a TAI name (TAI §4.1), or None for any other name. Malformed DER
+    raises :class:`der.DerError`; a caller facing a peer treats that as no match."""
+    rdns = der.parse(name_raw).expect(der.SEQUENCE).children()
+    attrs = rdns[0].expect(der.SET).children() if len(rdns) == 1 else []
+    if len(attrs) != 1:
+        return None
+    parts = attrs[0].expect(der.SEQUENCE).children()
+    if len(parts) != 2:
+        return None
+    oid, value = parts
+    return value.as_relative_oid() if oid.as_oid() == TRUST_ANCHOR_ID_ATTRIBUTE else None
 
 
 def _parse_spki(spki: der.Node) -> tuple[str, bytes | None, bytes, bytes]:
@@ -413,9 +436,37 @@ def issue(
     scts: Sequence[SctSpec] = (),
 ) -> bytes:
     """Build and sign one certificate in the qTLS profile (D24)."""
+    sig_alg = _alg_identifier(BY_NAME[issuer_key.alg].oid)
+    tbs = build_tbs(
+        subject_name=name(subject_cn), subject_spki=subject_spki, issuer_name=name(issuer_cn),
+        signature_algorithm=sig_alg, serial=serial, not_before=not_before, not_after=not_after,
+        authority_key_id=key_id(issuer_spki) if issuer_spki != subject_spki else None,
+        ca=ca, path_len=path_len, key_usage=key_usage, dns_names=dns_names, scts=scts,
+    )  # fmt: skip
+    signature = issuer_key.sign(tbs, seed=signing_seed)
+    return der.seq(tbs, sig_alg, der.bit_string(signature))
+
+
+def build_tbs(
+    *,
+    subject_name: bytes,
+    subject_spki: bytes,
+    issuer_name: bytes,
+    signature_algorithm: bytes,
+    serial: int,
+    not_before: dt.datetime,
+    not_after: dt.datetime,
+    authority_key_id: bytes | None,
+    ca: bool = False,
+    path_len: int | None = None,
+    key_usage: set[int] | None = None,
+    dns_names: Sequence[str] = (),
+    scts: Sequence[SctSpec] = (),
+) -> bytes:
+    """A TBSCertificate in the qTLS profile (D24). Names and the signature AlgorithmIdentifier
+    are DER already, so an MTC certificate (TAI issuer, ``id-alg-mtcProof``, no AKID) uses it too."""
     if serial <= 0 or (serial.bit_length() + 8) // 8 > 20:
         raise CodecUsageError("serial must be positive and fit in 20 octets")
-    sig_alg = _alg_identifier(BY_NAME[issuer_key.alg].oid)
     exts = []
     bc = ([der.boolean(True)] if ca else []) + ([der.integer(path_len)] if path_len is not None else [])
     exts.append(_ext(BASIC_CONSTRAINTS, der.seq(*bc), critical=True))
@@ -423,24 +474,22 @@ def issue(
     if usage:
         exts.append(_ext(KEY_USAGE, der.named_bits(usage), critical=True))
     exts.append(_ext(SUBJECT_KEY_ID, der.octet_string(key_id(subject_spki))))
-    if issuer_spki != subject_spki:
-        exts.append(_ext(AUTHORITY_KEY_ID, der.seq(der.tlv(0x80, key_id(issuer_spki)))))
+    if authority_key_id is not None:
+        exts.append(_ext(AUTHORITY_KEY_ID, der.seq(der.tlv(0x80, authority_key_id))))
     if dns_names:
         exts.append(_ext(SUBJECT_ALT_NAME, der.seq(*(der.tlv(0x82, n.encode("ascii")) for n in dns_names))))
     if scts:
         exts.append(_ext(SCT_LIST, der.octet_string(_sct_list([_sct(s, subject_spki) for s in scts]))))
-    tbs = der.seq(
+    return der.seq(
         der.explicit(0, der.integer(2)),
         der.integer(serial),
-        sig_alg,
-        name(issuer_cn),
+        signature_algorithm,
+        issuer_name,
         der.seq(der.time(not_before), der.time(not_after)),
-        name(subject_cn),
+        subject_name,
         subject_spki,
         der.explicit(3, der.seq(*exts)),
     )
-    signature = issuer_key.sign(tbs, seed=signing_seed)
-    return der.seq(tbs, sig_alg, der.bit_string(signature))
 
 
 # --------------------------------------------------------------------------- #
@@ -560,11 +609,20 @@ def verify_chain(
 
     # 6. Validity, for every certificate in the chain.
     for cert in certs:
-        if not cert.not_before <= now <= cert.not_after:
-            raise AlertError(Alert.certificate_expired, "certificate not valid at this time", "validity")
+        check_validity(cert, now)
 
     # 7. The leaf: not a CA, key usage that fits its key kind, and the server name.
-    leaf = certs[0]
+    return check_leaf(certs[0], server_name=server_name, expected_kind=expected_kind)
+
+
+def check_validity(cert: Certificate, now: dt.datetime) -> None:
+    """D24 step 6 for one certificate."""
+    if not cert.not_before <= now <= cert.not_after:
+        raise AlertError(Alert.certificate_expired, "certificate not valid at this time", "validity")
+
+
+def check_leaf(leaf: Certificate, *, server_name: str, expected_kind: Kind | None) -> VerifiedLeaf:
+    """D24 step 7: the leaf rules every authentication path shares (X.509 chains here, MTC in qtls.mtc)."""
     if leaf.profile.ca:
         raise _bad("leaf is a CA", "leaf-is-ca")
     leaf_alg = BY_SPKI_OID.get(leaf.spki_oid)

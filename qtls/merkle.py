@@ -55,6 +55,11 @@ def _hash(data: bytes) -> bytes:
     return crypto.merkle_sha256(data)
 
 
+def digest(data: bytes) -> bytes:
+    """HASH(data): the log's hash over other inputs, such as subjectPublicKeyInfoHash (MTC -08 §5.2.1)."""
+    return _hash(data)
+
+
 def leaf_hash(entry: bytes) -> bytes:
     """MTH({entry}) = HASH(0x00 ‖ entry) (RFC 9162 §2.1.1)."""
     return _hash(b"\x00" + entry)

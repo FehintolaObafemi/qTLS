@@ -1,0 +1,146 @@
+{
+ "cert_13_0": {
+  "ca-and-1": "OK",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_13_1": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_14_0": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "OK",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_14_1": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_15_0": {
+  "ca-and-1": "OK",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_15_1": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_16_0": {
+  "ca-and-1": "OK",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_16_1": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_17_0": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_18_0": {
+  "ca-and-1": "malformed MTCProof",
+  "ca-and-2": "malformed MTCProof",
+  "ca-only": "malformed MTCProof",
+  "landmarks": "malformed MTCProof"
+ },
+ "cert_19_0": {
+  "ca-and-1": "malformed MTCProof",
+  "ca-and-2": "malformed MTCProof",
+  "ca-only": "malformed MTCProof",
+  "landmarks": "malformed MTCProof"
+ },
+ "cert_20_0": {
+  "ca-and-1": "malformed MTCProof",
+  "ca-and-2": "malformed MTCProof",
+  "ca-only": "malformed MTCProof",
+  "landmarks": "malformed MTCProof"
+ },
+ "cert_5_0": {
+  "ca-and-1": "OK",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_5_1": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_5_10": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_5_2": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied"
+ },
+ "cert_5_3": {
+  "ca-and-1": "OK",
+  "ca-and-2": "OK",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_5_4": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied"
+ },
+ "cert_5_5": {
+  "ca-and-1": "signature was not a whole number of bytes",
+  "ca-and-2": "signature was not a whole number of bytes",
+  "ca-only": "signature was not a whole number of bytes",
+  "landmarks": "signature was not a whole number of bytes"
+ },
+ "cert_5_6": {
+  "ca-and-1": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
+  "ca-and-2": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
+  "ca-only": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
+  "landmarks": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9"
+ },
+ "cert_5_7": {
+  "ca-and-1": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "ca-and-2": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "ca-only": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "landmarks": "unparsable: x509: inner and outer signature algorithm identifiers don't match"
+ },
+ "cert_5_8": {
+  "ca-and-1": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "ca-and-2": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "ca-only": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "landmarks": "unparsable: x509: inner and outer signature algorithm identifiers don't match"
+ },
+ "cert_5_9": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_61_0": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK"
+ }
+}

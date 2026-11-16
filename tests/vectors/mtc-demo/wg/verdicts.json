@@ -1,0 +1,114 @@
+{
+ "cert_10_0": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_10_1": {
+  "ca-only": "signature was not a whole number of bytes",
+  "landmarks": "signature was not a whole number of bytes"
+ },
+ "cert_10_10": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied"
+ },
+ "cert_10_11": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_10_12": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_10_13": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_10_14": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_10_2": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied"
+ },
+ "cert_10_3": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_10_4": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_10_5": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_10_6": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_10_7": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_10_8": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied"
+ },
+ "cert_10_9": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_2034_0": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_2034_1": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_2035_0": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_2035_1": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_2035_2": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "trusted subtree hash mismatch: expected c5cffeb0975d9230f814bf2b19dae46cc22d18ab16ae17e1211a7cbd8a6b7622, got 23dc471985346a9e64bb16b6869560f49acf97b39368e166dbc5f5eb6e922d81"
+ },
+ "cert_2078_0": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_2078_1": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_2121_0": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_2121_1": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_32_0": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_32_1": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ },
+ "cert_33_0": {
+  "ca-only": "OK",
+  "landmarks": "OK"
+ },
+ "cert_33_1": {
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "OK"
+ }
+}

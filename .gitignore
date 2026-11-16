@@ -10,6 +10,8 @@ dist/
 # Locally built liboqs and OpenSSL (scripts/build_liboqs.sh, scripts/build_openssl.sh)
 .oqs/
 .openssl/
+.go/
+.mtc-demo/
 
 # Notebooks
 .ipynb_checkpoints/

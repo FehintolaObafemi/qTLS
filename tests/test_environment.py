@@ -104,7 +104,7 @@ def test_build_artifacts_are_not_tracked() -> None:
     tracked = subprocess.run(
         ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
     ).stdout.splitlines()
-    offenders = [p for p in tracked if p.split("/", 1)[0] in {"obj", "bin", ".oqs", ".openssl", ".venv"}]
+    offenders = [p for p in tracked if p.split("/", 1)[0] in {"obj", "bin", ".oqs", ".openssl", ".venv", ".go", ".mtc-demo"}]
     assert offenders == []
 
 
@@ -306,7 +306,7 @@ def test_vendored_vectors_match_recorded_hashes() -> None:
     """Every file under tests/vectors is pinned by SHA-256 in its directory's SOURCE."""
     vectors = ROOT / "tests" / "vectors"
     dirs = sorted(d for d in vectors.iterdir() if d.is_dir())
-    assert {d.name for d in dirs} >= {"acvp", "liboqs", "mtc", "openssl", "rfc7748", "rfc8448", "trust-anchor-ids"}
+    assert {d.name for d in dirs} >= {"acvp", "liboqs", "mtc", "mtc-demo", "openssl", "rfc7748", "rfc8448", "trust-anchor-ids"}
     for d in dirs:
         source = d / "SOURCE"
         assert source.is_file(), f"{d.name} has no SOURCE file"

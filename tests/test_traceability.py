@@ -30,7 +30,7 @@ SPECS = ROOT / "docs" / "specs.md"
 PLAN = ROOT / "docs" / "PLAN.md"
 
 MIN_PROPERTIES = 15
-MIN_DECISIONS = 32
+MIN_DECISIONS = 34
 
 PROPERTY_LINE = re.compile(r"^\|\s*P\d", re.M)
 PROPERTY_ROW = re.compile(r"^\| (P\d+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \|$")
@@ -252,7 +252,7 @@ def test_checker_catches_methods_and_uncollected_dirs(tmp_path: Path) -> None:
 
 SPECS_MUTANTS = {
     "missing rejected reading": ("- **Rejected reading:** an empty IKM.", ""),
-    "missing tests field": ("- **Tests:** planned: Phase 3 — an SPKI-hash vector", "- Tests: planned: Phase 3 — an SPKI-hash vector"),
+    "missing tests field": ("- **Tests:** planned: Phase 3 — a client whose group", "- Tests: planned: Phase 3 — a client whose group"),
     "bad status": ("- **Tests:** planned: Phase 4 — a finished_key vector", "- **Tests:** planned: Phase four — a finished_key vector"),
     "met phase": ("- **Tests:** planned: Phase 4 — a finished_key vector", "- **Tests:** planned: Phase 0 — a finished_key vector"),
     "no description": ("- **Tests:** planned: Phase 4 — a finished_key vector; a mutant using the doubled prefix fails it.", "- **Tests:** planned: Phase 4"),

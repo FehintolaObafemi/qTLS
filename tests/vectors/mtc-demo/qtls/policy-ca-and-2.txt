@@ -1,0 +1,2 @@
+cosigner 32473.9.2 ecdsa_p256_sha256 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPUoZ4IwcXcDvlcXfehuZXnnpwXgva7RR6ongxrY+Rph1qaZi/yJccjt4vvgX9yAVQuHwU2SglSuSJFBwLlKZ6A==
+require-cosigners 32473.9 32473.9.2
