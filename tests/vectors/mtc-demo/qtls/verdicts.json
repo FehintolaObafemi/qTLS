@@ -3,144 +3,440 @@
   "ca-and-1": "OK",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
  },
  "cert_13_1": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "cosigner policy not satisfied",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
  },
  "cert_14_0": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "OK",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
  },
  "cert_14_1": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "cosigner policy not satisfied",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
  },
  "cert_15_0": {
   "ca-and-1": "OK",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
  },
  "cert_15_1": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "cosigner policy not satisfied",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
  },
  "cert_16_0": {
   "ca-and-1": "OK",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
  },
  "cert_16_1": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "cosigner policy not satisfied",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
  },
  "cert_17_0": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
  },
  "cert_18_0": {
   "ca-and-1": "malformed MTCProof",
   "ca-and-2": "malformed MTCProof",
   "ca-only": "malformed MTCProof",
-  "landmarks": "malformed MTCProof"
+  "landmarks": "malformed MTCProof",
+  "landmarks-derived": "malformed MTCProof",
+  "nested": "malformed MTCProof",
+  "quorum-2-of-3": "malformed MTCProof",
+  "revoked": "malformed MTCProof"
  },
  "cert_19_0": {
   "ca-and-1": "malformed MTCProof",
   "ca-and-2": "malformed MTCProof",
   "ca-only": "malformed MTCProof",
-  "landmarks": "malformed MTCProof"
+  "landmarks": "malformed MTCProof",
+  "landmarks-derived": "malformed MTCProof",
+  "nested": "malformed MTCProof",
+  "quorum-2-of-3": "malformed MTCProof",
+  "revoked": "malformed MTCProof"
  },
  "cert_20_0": {
   "ca-and-1": "malformed MTCProof",
   "ca-and-2": "malformed MTCProof",
   "ca-only": "malformed MTCProof",
-  "landmarks": "malformed MTCProof"
+  "landmarks": "malformed MTCProof",
+  "landmarks-derived": "malformed MTCProof",
+  "nested": "malformed MTCProof",
+  "quorum-2-of-3": "malformed MTCProof",
+  "revoked": "malformed MTCProof"
  },
  "cert_5_0": {
   "ca-and-1": "OK",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
  },
  "cert_5_1": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
  },
  "cert_5_10": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "cosigner policy not satisfied",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
  },
  "cert_5_2": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "cosigner policy not satisfied",
-  "landmarks": "cosigner policy not satisfied"
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
  },
  "cert_5_3": {
   "ca-and-1": "OK",
   "ca-and-2": "OK",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "OK",
+  "revoked": "OK"
  },
  "cert_5_4": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "cosigner policy not satisfied",
-  "landmarks": "cosigner policy not satisfied"
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
  },
  "cert_5_5": {
   "ca-and-1": "signature was not a whole number of bytes",
   "ca-and-2": "signature was not a whole number of bytes",
   "ca-only": "signature was not a whole number of bytes",
-  "landmarks": "signature was not a whole number of bytes"
+  "landmarks": "signature was not a whole number of bytes",
+  "landmarks-derived": "signature was not a whole number of bytes",
+  "nested": "signature was not a whole number of bytes",
+  "quorum-2-of-3": "signature was not a whole number of bytes",
+  "revoked": "signature was not a whole number of bytes"
  },
  "cert_5_6": {
   "ca-and-1": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
   "ca-and-2": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
   "ca-only": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
-  "landmarks": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9"
+  "landmarks": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
+  "landmarks-derived": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
+  "nested": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
+  "quorum-2-of-3": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9",
+  "revoked": "cosigners not in canonical order or duplicate: 32473.9.1 and 32473.9"
  },
  "cert_5_7": {
   "ca-and-1": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
   "ca-and-2": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
   "ca-only": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
-  "landmarks": "unparsable: x509: inner and outer signature algorithm identifiers don't match"
+  "landmarks": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "landmarks-derived": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "nested": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "quorum-2-of-3": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "revoked": "unparsable: x509: inner and outer signature algorithm identifiers don't match"
  },
  "cert_5_8": {
   "ca-and-1": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
   "ca-and-2": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
   "ca-only": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
-  "landmarks": "unparsable: x509: inner and outer signature algorithm identifiers don't match"
+  "landmarks": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "landmarks-derived": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "nested": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "quorum-2-of-3": "unparsable: x509: inner and outer signature algorithm identifiers don't match",
+  "revoked": "unparsable: x509: inner and outer signature algorithm identifiers don't match"
  },
  "cert_5_9": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
  },
  "cert_61_0": {
   "ca-and-1": "cosigner policy not satisfied",
   "ca-and-2": "cosigner policy not satisfied",
   "ca-only": "OK",
-  "landmarks": "OK"
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
+ },
+ "cert_92_0": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
+ },
+ "cert_92_1": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
+ },
+ "cert_92_10": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "OK",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
+ },
+ "cert_92_11": {
+  "ca-and-1": "OK",
+  "ca-and-2": "OK",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "OK",
+  "revoked": "OK"
+ },
+ "cert_92_12": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
+ },
+ "cert_92_13": {
+  "ca-and-1": "OK",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "OK",
+  "revoked": "OK"
+ },
+ "cert_92_14": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "OK",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "OK",
+  "revoked": "OK"
+ },
+ "cert_92_15": {
+  "ca-and-1": "OK",
+  "ca-and-2": "OK",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "OK",
+  "revoked": "OK"
+ },
+ "cert_92_2": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
+ },
+ "cert_92_3": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
+ },
+ "cert_92_4": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
+ },
+ "cert_92_5": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
+ },
+ "cert_92_6": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
+ },
+ "cert_92_7": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "cosigner policy not satisfied",
+  "landmarks": "cosigner policy not satisfied",
+  "landmarks-derived": "cosigner policy not satisfied",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "cosigner policy not satisfied"
+ },
+ "cert_92_8": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
+ },
+ "cert_92_9": {
+  "ca-and-1": "OK",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "OK",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
+ },
+ "cert_93_0": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
+ },
+ "cert_94_0": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "certificate serial 844424930132062 is revoked (range [844424930132062, 844424930132063])"
+ },
+ "cert_95_0": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "certificate serial 844424930132063 is revoked (range [844424930132062, 844424930132063])"
+ },
+ "cert_96_0": {
+  "ca-and-1": "cosigner policy not satisfied",
+  "ca-and-2": "cosigner policy not satisfied",
+  "ca-only": "OK",
+  "landmarks": "OK",
+  "landmarks-derived": "OK",
+  "nested": "cosigner policy not satisfied",
+  "quorum-2-of-3": "cosigner policy not satisfied",
+  "revoked": "OK"
  }
 }

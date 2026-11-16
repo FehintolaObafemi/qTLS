@@ -30,7 +30,7 @@ SPECS = ROOT / "docs" / "specs.md"
 PLAN = ROOT / "docs" / "PLAN.md"
 
 MIN_PROPERTIES = 15
-MIN_DECISIONS = 34
+MIN_DECISIONS = 36
 
 PROPERTY_LINE = re.compile(r"^\|\s*P\d", re.M)
 PROPERTY_ROW = re.compile(r"^\| (P\d+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \|$")

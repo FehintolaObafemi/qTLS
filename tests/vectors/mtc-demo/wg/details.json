@@ -1,0 +1,920 @@
+{
+ "cert_10_0": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.2.1",
+    "32473.2.2"
+   ],
+   "groups": [
+    "operator-B",
+    "operator-D",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "OK"
+  }
+ },
+ "cert_10_1": {
+  "ca-only": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": false,
+   "verdict": "signature was not a whole number of bytes"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": false,
+   "verdict": "signature was not a whole number of bytes"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": false,
+   "verdict": "signature was not a whole number of bytes"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": false,
+   "verdict": "signature was not a whole number of bytes"
+  }
+ },
+ "cert_10_10": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "wg-sample": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  }
+ },
+ "cert_10_11": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [
+    "operator-B"
+   ],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  }
+ },
+ "cert_10_12": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  }
+ },
+ "cert_10_13": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  }
+ },
+ "cert_10_14": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.2.1",
+    "32473.2.2"
+   ],
+   "groups": [
+    "operator-B",
+    "operator-D",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "OK"
+  }
+ },
+ "cert_10_2": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "wg-sample": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  }
+ },
+ "cert_10_3": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [
+    "operator-B"
+   ],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  }
+ },
+ "cert_10_4": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.3.1"
+   ],
+   "groups": [
+    "operator-A",
+    "operator-B",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "OK"
+  }
+ },
+ "cert_10_5": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.3.2"
+   ],
+   "groups": [
+    "operator-B"
+   ],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  }
+ },
+ "cert_10_6": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.3.3"
+   ],
+   "groups": [
+    "operator-B",
+    "operator-C",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "OK"
+  }
+ },
+ "cert_10_7": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.3.4"
+   ],
+   "groups": [
+    "operator-B",
+    "operator-C",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "OK"
+  }
+ },
+ "cert_10_8": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.2.1",
+    "32473.2.2",
+    "32473.3.1",
+    "32473.3.2",
+    "32473.3.3",
+    "32473.3.4"
+   ],
+   "groups": [
+    "operator-A",
+    "operator-B",
+    "operator-C",
+    "operator-D",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  }
+ },
+ "cert_10_9": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.2.1",
+    "32473.2.2",
+    "32473.3.1",
+    "32473.3.2",
+    "32473.3.3",
+    "32473.3.4"
+   ],
+   "groups": [
+    "operator-A",
+    "operator-B",
+    "operator-C",
+    "operator-D",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "OK"
+  }
+ },
+ "cert_2034_0": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.2.1"
+   ],
+   "groups": [
+    "operator-B",
+    "operator-D",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "OK"
+  }
+ },
+ "cert_2034_1": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  }
+ },
+ "cert_2035_0": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.2.1"
+   ],
+   "groups": [
+    "operator-B",
+    "operator-D",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "OK"
+  }
+ },
+ "cert_2035_1": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  }
+ },
+ "cert_2035_2": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": false,
+   "verdict": "trusted subtree hash mismatch: expected c5cffeb0975d9230f814bf2b19dae46cc22d18ab16ae17e1211a7cbd8a6b7622, got 23dc471985346a9e64bb16b6869560f49acf97b39368e166dbc5f5eb6e922d81"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": false,
+   "verdict": "trusted subtree hash mismatch: expected c5cffeb0975d9230f814bf2b19dae46cc22d18ab16ae17e1211a7cbd8a6b7622, got 23dc471985346a9e64bb16b6869560f49acf97b39368e166dbc5f5eb6e922d81"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": false,
+   "verdict": "trusted subtree hash mismatch: expected c5cffeb0975d9230f814bf2b19dae46cc22d18ab16ae17e1211a7cbd8a6b7622, got 23dc471985346a9e64bb16b6869560f49acf97b39368e166dbc5f5eb6e922d81"
+  }
+ },
+ "cert_2078_0": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": [
+    "32473.1",
+    "32473.2.1"
+   ],
+   "groups": [
+    "operator-B",
+    "operator-D",
+    "two-independent-operators",
+    "independent-cosigner-from-B"
+   ],
+   "trusted": false,
+   "verdict": "OK"
+  }
+ },
+ "cert_2078_1": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  }
+ },
+ "cert_2121_0": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": false,
+   "verdict": "certificate serial 281474976712777 is revoked (range [281474976712756, 18446744073709551615])"
+  }
+ },
+ "cert_2121_1": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": false,
+   "verdict": "certificate serial 281474976712777 is revoked (range [281474976712756, 18446744073709551615])"
+  }
+ },
+ "cert_32_0": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  }
+ },
+ "cert_32_1": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  }
+ },
+ "cert_33_0": {
+  "ca-only": {
+   "cosigned_by": [
+    "32473.1"
+   ],
+   "groups": [],
+   "trusted": false,
+   "verdict": "OK"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  }
+ },
+ "cert_33_1": {
+  "ca-only": {
+   "cosigned_by": [],
+   "groups": [],
+   "trusted": false,
+   "verdict": "cosigner policy not satisfied"
+  },
+  "landmarks": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "landmarks-derived": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  },
+  "wg-sample": {
+   "cosigned_by": null,
+   "groups": null,
+   "trusted": true,
+   "verdict": "OK"
+  }
+ }
+}

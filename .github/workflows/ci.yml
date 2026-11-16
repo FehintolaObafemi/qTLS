@@ -21,7 +21,12 @@ jobs:
       QTLS_OPENSSL_PREFIX: ${{ github.workspace }}/.openssl
       QTLS_OPENSSL: ${{ github.workspace }}/.openssl/bin/openssl
       # The OpenSSL interop and oracle tests must run, not just not skip (tests/conftest.py).
-      QTLS_MIN_OPENSSL_TESTS: "39"
+      QTLS_MIN_OPENSSL_TESTS: "40"
+      # Likewise the live differential against the WG's Go demo (tests/test_mtc_go.py; specs.md D34).
+      QTLS_GO_DEMO: ${{ github.workspace }}/.mtc-demo/demo
+      QTLS_MIN_GO_TESTS: "16"
+      # The pinned toolchain only: `go` must never download another one.
+      GOTOOLCHAIN: local
       # Any skipped test fails the run, so crypto can't be silently bypassed.
       QTLS_NO_SKIPS: "1"
     steps:
@@ -52,10 +57,34 @@ jobs:
       - name: Build OpenSSL (pinned commit)
         run: scripts/build_openssl.sh
 
+      - name: Cache pinned Go toolchain
+        uses: actions/cache@v4
+        with:
+          path: .go
+          key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install_go.sh') }}
+
+      # The tarball's SHA-256 is checked against the script's table.
+      - name: Install Go (pinned version and hash)
+        run: scripts/install_go.sh
+
       - name: Install locked dependencies
         run: |
           python -m pip install --require-hashes -r requirements/ci.txt
           python -m pip install --no-deps --no-build-isolation -e .
 
+      # The MTC WG's Go demo at its pinned tag and commit: the independent oracle of the go-marked tests.
+      - name: Build the MTC demo (pinned commit)
+        run: python scripts/mtc_demo.py --build-only
+
       - name: Run tests
         run: python -m pytest
+
+      # A failed live differential keeps its working directory (certificates, policies, Go's output);
+      # `python scripts/mtc_demo.py --replay <dir>` re-runs the comparison from it.
+      - name: Upload the failed MTC differential
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtc-differential-failed-py${{ matrix.python-version }}
+          path: .mtc-demo/failed/
+          if-no-files-found: ignore
