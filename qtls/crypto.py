@@ -989,6 +989,22 @@ class Sha256:
         return out
 
 
+def merkle_sha256(data: bytes) -> bytes:
+    """One SHA-256 digest of a Merkle tree node or leaf (MTC -08 §4; specs.md D31).
+
+    Counted apart from transcript hashing (``"merkle-digest"``), so Phase 5 can
+    attribute certificate-verification cost. Through ``cryptography``'s OpenSSL,
+    the one :func:`backend_info` records, like every other primitive.
+    """
+    data = _check_bytes("data", data)
+    h = hashes.Hash(hashes.SHA256())
+    h.update(data)
+    out = h.finalize()
+    _record("openssl", "SHA-256", "merkle-digest")
+    _record("openssl", "SHA-256", "merkle-bytes", len(data))
+    return out
+
+
 def sha256(data: bytes = b"") -> Sha256:
     h = Sha256()
     if data:

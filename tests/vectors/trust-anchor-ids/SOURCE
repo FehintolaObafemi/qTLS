@@ -1,0 +1,5 @@
+document: draft-ietf-tls-trust-anchor-ids-07, Appendix B, https://www.ietf.org/archive/id/draft-ietf-tls-trust-anchor-ids-07.txt
+source sha256: 624df5bf7afc1c950fc0c5489c5bc5ffdef8c30488efb108c6c9d10b434caaaf
+regenerate: python scripts/extract_mtc_vectors.py <mtc-08.txt> <trust-anchor-ids-07.txt> <dir with the two JSON files>
+oracle: independent (IETF draft authors' test vectors)
+sha256 appendix_b.json: 690b035a2627fa106e1a2dd7e7f056401a466d67a2c48efa2174d053e9bc3465

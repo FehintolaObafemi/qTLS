@@ -1,0 +1,10 @@
+document: draft-ietf-plants-merkle-tree-certs-08, Appendix C, https://www.ietf.org/archive/id/draft-ietf-plants-merkle-tree-certs-08.txt
+source sha256: fe50c3576e3f6f6891e43324a0dc16aa6ca56869ae5a6b9c94051ebd0895b9d1
+repository: https://github.com/ietf-plants-wg/merkle-tree-certs tag draft-ietf-plants-merkle-tree-certs-08 (commit 766dbfe6519819ff2771b1f429106706178bb16a), demo/large_inclusion_proofs.json and demo/large_consistency_proofs.json (C.2.2, C.2.3; input hashes checked)
+cited by the draft as: tree/main/demo/large_{inclusion,consistency}_proofs.txt (a moving branch), so the tag is pinned
+same cases as the .txt forms at the tag (cross-checked field by field 2026-11-15; not vendored): large_inclusion_proofs.txt 20173f58f6b212a52b44c391af73b437d45ec890c3039ba42a69cc5b066b58fa, large_consistency_proofs.txt 61de93c69e49003bb2d1a345b8d5d23eb8996df5a796456048f794bd4f14f79b
+regenerate: python scripts/extract_mtc_vectors.py <mtc-08.txt> <trust-anchor-ids-07.txt> <dir with the two JSON files>
+oracle: independent (IETF draft authors' test vectors)
+sha256 appendix_c.json: ca8918786fc5d9e6da9587c3c2311f4a32cd42d6b33b35e3c1bb6695ce0349da
+sha256 large_consistency_proofs.json: 7fcc6d9d0283ecf7d19e221049f477964dfbf048ef43601a640a8c5a62e47d9f
+sha256 large_inclusion_proofs.json: 19ffc377d123613de6cfe3ad98c858da7a0af9abbcd8e9bd69cfa9f225e542c4
